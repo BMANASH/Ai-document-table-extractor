@@ -30,7 +30,7 @@ st.markdown("""
     font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
-/* Lock Sidebar to Static Width (Disables resizing/dragging line) */
+/* Lock Sidebar to Static Width (Disables resizing drag line) */
 section[data-testid="stSidebar"] {
     min-width: 300px !important;
     max-width: 300px !important;
@@ -173,74 +173,31 @@ div[data-testid="stFileUploader"] {
 """, unsafe_allow_html=True)
 
 # Microsoft Excel Vector Badges
-EXCEL_ICON_MAIN = """
-<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect x="14" y="6" width="28" height="36" rx="4" fill="#107C41"/>
-    <rect x="23" y="13" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/>
-    <rect x="31" y="13" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/>
-    <rect x="23" y="19" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/>
-    <rect x="31" y="19" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/>
-    <rect x="23" y="25" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/>
-    <rect x="31" y="25" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/>
-    <rect x="23" y="31" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/>
-    <rect x="31" y="31" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/>
-    <rect x="6" y="9" width="22" height="30" rx="3" fill="#185C37" style="filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.5));"/>
-    <path d="M11.5 30L15.3 24L11.8 18H15.2L17 21.5L18.8 18H22.2L18.7 24L22.5 30H19.1L17 26.2L14.9 30H11.5Z" fill="white"/>
-</svg>
-"""
+EXCEL_ICON_MAIN = '<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="14" y="6" width="28" height="36" rx="4" fill="#107C41"/><rect x="23" y="13" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="31" y="13" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="23" y="19" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="31" y="19" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="23" y="25" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="31" y="25" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="23" y="31" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="31" y="31" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="6" y="9" width="22" height="30" rx="3" fill="#185C37" style="filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.5));"/><path d="M11.5 30L15.3 24L11.8 18H15.2L17 21.5L18.8 18H22.2L18.7 24L22.5 30H19.1L17 26.2L14.9 30H11.5Z" fill="white"/></svg>'
 
-EXCEL_ICON_SIDEBAR = """
-<svg width="28" height="28" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align: middle;">
-    <rect x="14" y="6" width="28" height="36" rx="4" fill="#107C41"/>
-    <rect x="23" y="13" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/>
-    <rect x="31" y="13" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/>
-    <rect x="23" y="19" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/>
-    <rect x="31" y="19" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/>
-    <rect x="23" y="25" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/>
-    <rect x="31" y="25" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/>
-    <rect x="23" y="31" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/>
-    <rect x="31" y="31" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/>
-    <rect x="6" y="9" width="22" height="30" rx="3" fill="#185C37"/>
-    <path d="M11.5 30L15.3 24L11.8 18H15.2L17 21.5L18.8 18H22.2L18.7 24L22.5 30H19.1L17 26.2L14.9 30H11.5Z" fill="white"/>
-</svg>
-"""
+EXCEL_ICON_SIDEBAR = '<svg width="28" height="28" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align: middle;"><rect x="14" y="6" width="28" height="36" rx="4" fill="#107C41"/><rect x="23" y="13" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="31" y="13" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="23" y="19" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="31" y="19" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="23" y="25" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="31" y="25" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="23" y="31" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="31" y="31" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="6" y="9" width="22" height="30" rx="3" fill="#185C37"/><path d="M11.5 30L15.3 24L11.8 18H15.2L17 21.5L18.8 18H22.2L18.7 24L22.5 30H19.1L17 26.2L14.9 30H11.5Z" fill="white"/></svg>'
 
 # Static Sidebar Configuration
 with st.sidebar:
-    sidebar_header = f"""
-    <div style="display:flex; align-items:center; gap:10px; margin-bottom: 6px;">
-        {EXCEL_ICON_SIDEBAR}
-        <span style="font-size:1.35rem; font-weight:700; color:#ffffff; font-family:'Space Grotesk',sans-serif;">SheetGen AI</span>
-    </div>
-    """
-    st.markdown(sidebar_header, unsafe_allow_html=True)
+    st.markdown(f'<div style="display:flex; align-items:center; gap:10px; margin-bottom: 6px;">{EXCEL_ICON_SIDEBAR}<span style="font-size:1.35rem; font-weight:700; color:#ffffff; font-family:\'Space Grotesk\',sans-serif;">SheetGen AI</span></div>', unsafe_allow_html=True)
     st.caption("Automated Tabular Data Extraction Engine")
     st.markdown("<hr style='border:none; border-top:1px solid rgba(255,255,255,0.08); margin:12px 0;'>", unsafe_allow_html=True)
     
     st.markdown("<div style='font-size:0.8rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:#94a3b8; margin-bottom:10px;'>Core Capabilities</div>", unsafe_allow_html=True)
     
-    st.markdown("""
-    <div class="sidebar-item">
-        <div class="sidebar-title">📑 PDF & Image Parsing</div>
-        <div class="sidebar-desc">Scans multi-page financial statements, bills, and data sheets.</div>
-    </div>
-    <div class="sidebar-item">
-        <div class="sidebar-title">🗃️ Multi-Table Isolation</div>
-        <div class="sidebar-desc">Separates distinct tables cleanly into separate tabs.</div>
-    </div>
-    <div class="sidebar-item">
-        <div class="sidebar-title">🧹 Number Sanitization</div>
-        <div class="sidebar-desc">Removes stray characters so Excel math formulas work instantly.</div>
-    </div>
-    <div class="sidebar-item">
-        <div class="sidebar-title">✏️ In-Browser Data Grid</div>
-        <div class="sidebar-desc">Double-click cells to adjust values before downloading.</div>
-    </div>
-    <div class="sidebar-item">
-        <div class="sidebar-title">📥 Native .xlsx Generator</div>
-        <div class="sidebar-desc">Produces standard multi-sheet Excel workbooks.</div>
-    </div>
-    """, unsafe_allow_html=True)
+    sidebar_items_html = (
+        '<div class="sidebar-item"><div class="sidebar-title">📑 PDF & Image Parsing</div>'
+        '<div class="sidebar-desc">Scans multi-page financial statements, bills, and data sheets.</div></div>'
+        '<div class="sidebar-item"><div class="sidebar-title">🗃️ Multi-Table Isolation</div>'
+        '<div class="sidebar-desc">Separates distinct tables cleanly into separate tabs.</div></div>'
+        '<div class="sidebar-item"><div class="sidebar-title">🧹 Number Sanitization</div>'
+        '<div class="sidebar-desc">Removes stray characters so Excel math formulas work instantly.</div></div>'
+        '<div class="sidebar-item"><div class="sidebar-title">✏️ In-Browser Data Grid</div>'
+        '<div class="sidebar-desc">Double-click cells to adjust values before downloading.</div></div>'
+        '<div class="sidebar-item"><div class="sidebar-title">📥 Native .xlsx Generator</div>'
+        '<div class="sidebar-desc">Produces standard multi-sheet Excel workbooks.</div></div>'
+    )
+    st.markdown(sidebar_items_html, unsafe_allow_html=True)
     
     st.markdown("<hr style='border:none; border-top:1px solid rgba(255,255,255,0.08); margin:12px 0;'>", unsafe_allow_html=True)
     st.markdown("🟢 **System Status:** Ready")
@@ -248,38 +205,38 @@ with st.sidebar:
 # Hero Header
 st.markdown('<div class="status-badge">⚡ Instant Document to Spreadsheet</div>', unsafe_allow_html=True)
 
-main_header_html = f"""
-<div class="header-wrapper">
-    {EXCEL_ICON_MAIN}
-    <div class="excel-title-text">SheetGen AI</div>
-</div>
-"""
+main_header_html = f'<div class="header-wrapper">{EXCEL_ICON_MAIN}<div class="excel-title-text">SheetGen AI</div></div>'
 st.markdown(main_header_html, unsafe_allow_html=True)
 st.markdown('<div class="sub-heading">Upload any PDF or image table → Automatically convert it to a clean, editable Excel file.</div>', unsafe_allow_html=True)
 
 # 3 Floating Motion Feature Cards
 col_card1, col_card2, col_card3 = st.columns(3)
 with col_card1:
-    st.markdown("""
-    <div class="feature-card card-anim-1">
-        <div style="font-size: 1.15rem; font-weight:700; color:#4ade80; margin-bottom:4px;">1. Upload File</div>
-        <div style="font-size:0.85rem; color:#94a3b8; line-height:1.4;">Drop scanned photos or multi-page PDFs containing data tables.</div>
-    </div>
-    """, unsafe_allow_html=True)
+    card1_html = (
+        '<div class="feature-card card-anim-1">'
+        '<div style="font-size: 1.15rem; font-weight:700; color:#4ade80; margin-bottom:4px;">1. Upload File</div>'
+        '<div style="font-size:0.85rem; color:#94a3b8; line-height:1.4;">Drop scanned photos or multi-page PDFs containing data tables.</div>'
+        '</div>'
+    )
+    st.markdown(card1_html, unsafe_allow_html=True)
+
 with col_card2:
-    st.markdown("""
-    <div class="feature-card card-anim-2">
-        <div style="font-size: 1.15rem; font-weight:700; color:#38bdf8; margin-bottom:4px;">2. AI Formats & Cleans</div>
-        <div style="font-size:0.85rem; color:#94a3b8; line-height:1.4;">Extracts rows, columns, and normalizes numeric values automatically.</div>
-    </div>
-    """, unsafe_allow_html=True)
+    card2_html = (
+        '<div class="feature-card card-anim-2">'
+        '<div style="font-size: 1.15rem; font-weight:700; color:#38bdf8; margin-bottom:4px;">2. AI Formats & Cleans</div>'
+        '<div style="font-size:0.85rem; color:#94a3b8; line-height:1.4;">Extracts rows, columns, and normalizes numeric values automatically.</div>'
+        '</div>'
+    )
+    st.markdown(card2_html, unsafe_allow_html=True)
+
 with col_card3:
-    st.markdown("""
-    <div class="feature-card card-anim-3">
-        <div style="font-size: 1.15rem; font-weight:700; color:#a78bfa; margin-bottom:4px;">3. Download Excel</div>
-        <div style="font-size:0.85rem; color:#94a3b8; line-height:1.4;">Get a clean multi-sheet Excel file (.xlsx) ready for formulas and charts.</div>
-    </div>
-    """, unsafe_allow_html=True)
+    card3_html = (
+        '<div class="feature-card card-anim-3">'
+        '<div style="font-size: 1.15rem; font-weight:700; color:#a78bfa; margin-bottom:4px;">3. Download Excel</div>'
+        '<div style="font-size:0.85rem; color:#94a3b8; line-height:1.4;">Get a clean multi-sheet Excel file (.xlsx) ready for formulas and charts.</div>'
+        '</div>'
+    )
+    st.markdown(card3_html, unsafe_allow_html=True)
 
 st.markdown("<br>", unsafe_allow_html=True)
 
