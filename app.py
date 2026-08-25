@@ -3,6 +3,7 @@ import pandas as pd
 import io
 import json
 import os
+import re
 from PIL import Image
 from pypdf import PdfReader
 import google.generativeai as genai
@@ -18,7 +19,7 @@ st.set_page_config(
 # Fetch API Key silently from Streamlit Secrets or Environment
 api_key = st.secrets.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY", "")
 
-# Modern Dark Theme, Static Sidebar & Motion UI CSS
+# Modern Dark Theme, Static Sidebar Lock & Motion UI CSS
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap');
@@ -166,7 +167,7 @@ EXCEL_ICON_MAIN = '<svg width="48" height="48" viewBox="0 0 48 48" fill="none" x
 
 EXCEL_ICON_SIDEBAR = '<svg width="28" height="28" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align: middle;"><rect x="14" y="6" width="28" height="36" rx="4" fill="#107C41"/><rect x="23" y="13" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="31" y="13" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="23" y="19" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="31" y="19" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="23" y="25" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="31" y="25" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="23" y="31" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="31" y="31" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="6" y="9" width="22" height="30" rx="3" fill="#185C37"/><path d="M11.5 30L15.3 24L11.8 18H15.2L17 21.5L18.8 18H22.2L18.7 24L22.5 30H19.1L17 26.2L14.9 30H11.5Z" fill="white"/></svg>'
 
-# Sidebar Configuration
+# Static Sidebar Configuration
 with st.sidebar:
     st.markdown(f'<div style="display:flex; align-items:center; gap:10px; margin-bottom: 6px;">{EXCEL_ICON_SIDEBAR}<span style="font-size:1.35rem; font-weight:700; color:#ffffff; font-family:\'Space Grotesk\',sans-serif;">SheetGen AI</span></div>', unsafe_allow_html=True)
     st.caption("Automated Tabular Data Extraction Engine")
@@ -176,7 +177,7 @@ with st.sidebar:
     
     sidebar_items_html = (
         '<div class="sidebar-item"><div class="sidebar-title">📑 Batch OCR & PDF Parsing</div>'
-        '<div class="sidebar-desc">Scans multi-page financial statements, bills, and data sheets.</div></div>'
+        '<div class="sidebar-desc">Scans multi-page financial statements, bills, and handwritten registers.</div></div>'
         '<div class="sidebar-item"><div class="sidebar-title">🗃️ Multi-Table Isolation</div>'
         '<div class="sidebar-desc">Separates distinct tables cleanly into separate tabs.</div></div>'
         '<div class="sidebar-item"><div class="sidebar-title">🧹 Number Sanitization</div>'
@@ -227,10 +228,48 @@ with col_card3:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# Extraction Processor
-def process_with_gemini(files_data, key):
+# Dynamic Discovery & Multi-Model Execution Engine
+def process_with_active_gemini(files_data, key):
     genai.configure(api_key=key)
     
+    # 1. Inspect all models active for this key
+    available_models = list(genai.list_models())
+    candidates = []
+    
+    for m in available_models:
+        methods = getattr(m, 'supported_generation_methods', [])
+        if 'generateContent' not in methods:
+            continue
+        m_name = m.name.lower()
+        # Filter out text-to-speech, embeddings, and non-vision endpoints
+        if any(unwanted in m_name for unwanted in ['tts', 'embedding', 'embed', 'aqa', 'imagen', 'realtime', 'bison']):
+            continue
+        candidates.append(m.name)
+
+    # 2. Intelligent Ranking (prioritizes latest flash & pro models)
+    def calculate_rank(name):
+        n = name.lower()
+        score = 0
+        if 'flash' in n:
+            score += 60
+        elif 'pro' in n:
+            score += 50
+            
+        # Parse version numbers to prioritize the newest active model
+        numbers = re.findall(r'\d+\.?\d*', n)
+        if numbers:
+            try:
+                score += float(numbers[0]) * 20
+            except ValueError:
+                pass
+        return score
+
+    candidates.sort(key=calculate_rank, reverse=True)
+    
+    if not candidates:
+        raise Exception("No active multimodal models found for this API key. Please check your Google AI Studio project.")
+
+    # 3. Assemble document payload
     prompt = """
     You are an expert Data Specialist and OCR Analyst.
     Analyze all the uploaded document(s) and/or image(s) carefully (including handwritten text and registers):
@@ -273,32 +312,29 @@ def process_with_gemini(files_data, key):
             
     contents.append(prompt)
 
-    # Dynamic model binding
-    supported_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-    target_model = None
-    
-    for candidate in ["models/gemini-1.5-flash", "models/gemini-1.5-pro", "models/gemini-2.0-flash-exp", "models/gemini-2.0-flash"]:
-        if candidate in supported_models:
-            target_model = candidate
-            break
-            
-    if not target_model:
-        target_model = supported_models[0] if supported_models else "models/gemini-1.5-flash"
+    # 4. Try candidates in sequence until successful
+    last_error = None
+    for model_name in candidates:
+        try:
+            model = genai.GenerativeModel(model_name)
+            response = model.generate_content(
+                contents,
+                generation_config={"response_mime_type": "application/json"}
+            )
+            if response and response.text:
+                text = response.text.strip()
+                if text.startswith("```json"):
+                    text = text[7:]
+                if text.startswith("```"):
+                    text = text[3:]
+                if text.endswith("```"):
+                    text = text[:-3]
+                return text.strip(), model_name
+        except Exception as e:
+            last_error = e
+            continue
 
-    model = genai.GenerativeModel(target_model)
-    response = model.generate_content(
-        contents,
-        generation_config={"response_mime_type": "application/json"}
-    )
-    
-    raw_text = response.text.strip()
-    if raw_text.startswith("```json"):
-        raw_text = raw_text[7:]
-    if raw_text.startswith("```"):
-        raw_text = raw_text[3:]
-    if raw_text.endswith("```"):
-        raw_text = raw_text[:-3]
-    return raw_text.strip()
+    raise Exception(f"Failed across candidate models {candidates[:3]}. Last Error: {last_error}")
 
 # Document Upload Section with Multiple File Support
 uploaded_files = st.file_uploader(
@@ -330,12 +366,13 @@ if uploaded_files:
             st.subheader("⚡ Convert to Excel")
             st.caption(f"Process all {len(uploaded_files)} file(s), extract tables, and compile into a unified spreadsheet.")
             if st.button("🚀 Extract Tables & Convert to Excel", type="primary", use_container_width=True):
-                with st.spinner("AI Vision is reading document data and generating Excel sheets..."):
+                with st.spinner("Discovering active AI engine and compiling Excel sheets..."):
                     try:
-                        raw_json_str = process_with_gemini(files_data, api_key)
+                        raw_json_str, used_model = process_with_active_gemini(files_data, api_key)
                         data = json.loads(raw_json_str)
                         st.session_state["extracted_data"] = data
-                        st.toast(f"Successfully processed {len(uploaded_files)} file(s)!", icon="✅")
+                        st.session_state["active_model_used"] = used_model
+                        st.toast(f"Successfully processed using {used_model}!", icon="✅")
                     except Exception as e:
                         st.error(f"Processing Error: {e}")
 
