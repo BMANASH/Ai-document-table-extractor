@@ -11,6 +11,7 @@ import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.chart import BarChart, DoughnutChart, Reference
+from openpyxl.chart.label import DataLabelList
 import plotly.express as px
 import plotly.graph_objects as go
 
@@ -534,18 +535,30 @@ def generate_base_excel_workbook(sheets_map):
     return buf.getvalue()
 
 # =========================================================================
-# EXCEL GENERATOR 2: DATA + DYNAMIC LIVE FORMULA DASHBOARD (.XLSX)
+# EXCEL GENERATOR 2: EXECUTIVE DATA DASHBOARD WITH LIVE FORMULAS (.XLSX)
 # =========================================================================
 def generate_smart_dashboard_excel_workbook(sheets_map, master_df):
     wb = openpyxl.Workbook()
     wb.remove(wb.active)
     
+    BRAND_GREEN = "107C41"
+    CARD_BG = "F8FAFC"
+    CARD_BORDER_CLR = "CBD5E1"
+    TEXT_DARK = "0F172A"
+    TEXT_MUTED = "64748B"
+
     header_font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
-    header_fill = PatternFill(start_color="107C41", end_color="107C41", fill_type="solid")
-    regular_font = Font(name="Calibri", size=10, color="1F2937")
+    header_fill = PatternFill(start_color=BRAND_GREEN, end_color=BRAND_GREEN, fill_type="solid")
+    card_fill = PatternFill(start_color=CARD_BG, end_color=CARD_BG, fill_type="solid")
+    regular_font = Font(name="Calibri", size=10, color=TEXT_DARK)
+    
     thin_border = Border(
         left=Side(style='thin', color='E5E7EB'), right=Side(style='thin', color='E5E7EB'),
         top=Side(style='thin', color='E5E7EB'), bottom=Side(style='thin', color='E5E7EB')
+    )
+    thin_card_border = Border(
+        left=Side(style='thin', color=CARD_BORDER_CLR), right=Side(style='thin', color=CARD_BORDER_CLR),
+        top=Side(style='thin', color=CARD_BORDER_CLR), bottom=Side(style='thin', color=CARD_BORDER_CLR)
     )
     zebra_fill = PatternFill(start_color="F9FAFB", end_color="F9FAFB", fill_type="solid")
     
@@ -591,54 +604,106 @@ def generate_smart_dashboard_excel_workbook(sheets_map, master_df):
                     max_len = len(val_s)
             ws.column_dimensions[col_letter].width = max(max_len + 4, 14)
             
-    # 2. Build Formula Dashboard Sheet at Index 0
+    # 2. Build Executive Formula Dashboard Sheet at Index 0
     ws_dash = wb.create_sheet(title="Executive Dashboard", index=0)
     ws_dash.views.sheetView[0].showGridLines = True
     
     # Title Banner
-    ws_dash.merge_cells("A1:K1")
-    t_cell = ws_dash["A1"]
+    ws_dash.merge_cells("B2:M2")
+    t_cell = ws_dash["B2"]
     t_cell.value = "   📊 EXECUTIVE DATA INTELLIGENCE DASHBOARD"
     t_cell.font = Font(name="Calibri", size=14, bold=True, color="FFFFFF")
     t_cell.fill = header_fill
     t_cell.alignment = Alignment(horizontal="left", vertical="center")
-    ws_dash.row_dimensions[1].height = 36
+    ws_dash.row_dimensions[2].height = 36
     
-    # KPI 1: Live Record Count
-    ws_dash["A3"].value = "TOTAL RECORDS"
-    ws_dash["A3"].font = Font(name="Calibri", size=9, color="6B7280", bold=True)
-    ws_dash["A4"].value = f"=COUNTA('{data_sheet_name}'!B2:B{len(master_df)+1})"
-    ws_dash["A4"].font = Font(name="Calibri", size=18, color="107C41", bold=True)
-    
-    # Dynamically select two best categorical columns
+    # Identify dynamic categorical columns
     cat_candidates = [c for c in master_df.columns if c not in ['SL. NO.', 'EMPLOYEE NAME', 'PHONE', 'PHONE NUMBER', 'NO.']]
     cat1 = cat_candidates[0] if len(cat_candidates) > 0 else master_df.columns[0]
     cat2 = cat_candidates[1] if len(cat_candidates) > 1 else cat1
     
-    # Dynamic Summary Table 1 (For Bar Chart)
+    clean_series1 = master_df[cat1].astype(str).str.strip().str.upper().replace("", pd.NA).dropna()
+    unique_cnt1 = clean_series1.nunique()
+    
+    clean_series2 = master_df[cat2].astype(str).str.strip().str.upper().replace("", pd.NA).dropna()
+    top_val2 = clean_series2.mode().iloc[0] if not clean_series2.empty else "N/A"
+    
+    # 3 Corporate KPI Cards (B4:D5, F4:H5, J4:L5)
+    # Card 1: Total Records
+    ws_dash.merge_cells("B4:D4")
+    ws_dash.merge_cells("B5:D5")
+    ws_dash["B4"].value = "TOTAL RECORDS PARSED"
+    ws_dash["B4"].font = Font(name="Calibri", size=9, bold=True, color=TEXT_MUTED)
+    ws_dash["B5"].value = f"=COUNTA('{data_sheet_name}'!B2:B{len(master_df)+1})"
+    ws_dash["B5"].font = Font(name="Calibri", size=20, bold=True, color=BRAND_GREEN)
+    for r in range(4, 6):
+        for c in range(2, 5):
+            cell = ws_dash.cell(row=r, column=c)
+            cell.fill = card_fill
+            cell.border = thin_card_border
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    # Card 2: Unique Classifications
+    ws_dash.merge_cells("F4:H4")
+    ws_dash.merge_cells("F5:H5")
+    ws_dash["F4"].value = f"UNIQUE {cat1[:15]}"
+    ws_dash["F4"].font = Font(name="Calibri", size=9, bold=True, color=TEXT_MUTED)
+    ws_dash["F5"].value = unique_cnt1
+    ws_dash["F5"].font = Font(name="Calibri", size=20, bold=True, color="0284C7")
+    for r in range(4, 6):
+        for c in range(6, 9):
+            cell = ws_dash.cell(row=r, column=c)
+            cell.fill = card_fill
+            cell.border = thin_card_border
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    # Card 3: Dominant Value
+    ws_dash.merge_cells("J4:L4")
+    ws_dash.merge_cells("J5:L5")
+    ws_dash["J4"].value = f"DOMINANT {cat2[:14]}"
+    ws_dash["J4"].font = Font(name="Calibri", size=9, bold=True, color=TEXT_MUTED)
+    ws_dash["J5"].value = str(top_val2)[:18]
+    ws_dash["J5"].font = Font(name="Calibri", size=18, bold=True, color=BRAND_GREEN)
+    for r in range(4, 6):
+        for c in range(10, 13):
+            cell = ws_dash.cell(row=r, column=c)
+            cell.fill = card_fill
+            cell.border = thin_card_border
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    ws_dash.row_dimensions[4].height = 18
+    ws_dash.row_dimensions[5].height = 30
+    
+    # 4. Summary Table 1 & Native Bar Chart
     c1_idx = master_df.columns.get_loc(cat1) + 1
     c1_let = get_column_letter(c1_idx)
     
-    ws_dash["A7"].value = cat1
-    ws_dash["B7"].value = "RECORD COUNT"
-    ws_dash["A7"].font = Font(name="Calibri", size=10, bold=True, color="FFFFFF")
-    ws_dash["A7"].fill = header_fill
-    ws_dash["B7"].font = Font(name="Calibri", size=10, bold=True, color="FFFFFF")
-    ws_dash["B7"].fill = header_fill
+    ws_dash["B8"].value = cat1
+    ws_dash["C8"].value = "RECORD COUNT"
+    ws_dash["B8"].font = Font(name="Calibri", size=10, bold=True, color="FFFFFF")
+    ws_dash["B8"].fill = header_fill
+    ws_dash["C8"].font = Font(name="Calibri", size=10, bold=True, color="FFFFFF")
+    ws_dash["C8"].fill = header_fill
     
-    # Clean text to prevent case fragmentation
-    clean_series1 = master_df[cat1].astype(str).str.strip().str.upper().replace("", pd.NA).dropna()
     unique_cats1 = clean_series1.value_counts().head(8).index.tolist()
-    
-    for i, val in enumerate(unique_cats1, start=8):
-        ws_dash[f"A{i}"].value = str(val)
-        ws_dash[f"B{i}"].value = f"=COUNTIF('{data_sheet_name}'!${c1_let}$2:${c1_let}${len(master_df)+1}, A{i})"
-        ws_dash[f"A{i}"].font = regular_font
-        ws_dash[f"B{i}"].font = regular_font
-        ws_dash[f"A{i}"].border = thin_border
-        ws_dash[f"B{i}"].border = thin_border
-        ws_dash[f"B{i}"].alignment = Alignment(horizontal="center", vertical="center")
+    for idx, val in enumerate(unique_cats1, start=9):
+        ws_dash[f"B{idx}"].value = str(val)
+        ws_dash[f"C{idx}"].value = f"=COUNTIF('{data_sheet_name}'!${c1_let}$2:${c1_let}${len(master_df)+1}, B{idx})"
+        ws_dash[f"B{idx}"].font = regular_font
+        ws_dash[f"C{idx}"].font = regular_font
+        ws_dash[f"B{idx}"].border = thin_card_border
+        ws_dash[f"C{idx}"].border = thin_card_border
+        ws_dash[f"C{idx}"].alignment = Alignment(horizontal="center", vertical="center")
         
+    tot_row1 = 9 + len(unique_cats1)
+    ws_dash[f"B{tot_row1}"].value = "TOTAL"
+    ws_dash[f"B{tot_row1}"].font = Font(name="Calibri", size=10, bold=True, color=TEXT_DARK)
+    ws_dash[f"C{tot_row1}"].value = f"=SUM(C9:C{tot_row1-1})"
+    ws_dash[f"C{tot_row1}"].font = Font(name="Calibri", size=10, bold=True, color=TEXT_DARK)
+    ws_dash[f"B{tot_row1}"].border = thin_card_border
+    ws_dash[f"C{tot_row1}"].border = thin_card_border
+    ws_dash[f"C{tot_row1}"].alignment = Alignment(horizontal="center", vertical="center")
+
     if len(unique_cats1) > 0:
         bar = BarChart()
         bar.type = "col"
@@ -646,50 +711,69 @@ def generate_smart_dashboard_excel_workbook(sheets_map, master_df):
         bar.title = f"Distribution by {cat1}"
         bar.y_axis.title = "Count"
         bar.x_axis.title = cat1
-        data_ref1 = Reference(ws_dash, min_col=2, min_row=7, max_row=7 + len(unique_cats1))
-        cats_ref1 = Reference(ws_dash, min_col=1, min_row=8, max_row=7 + len(unique_cats1))
+        bar.varyColors = True
+        bar.legend = None
+        bar.gapWidth = 80
+        bar.dataLabels = DataLabelList()
+        bar.dataLabels.showVal = True
+        
+        data_ref1 = Reference(ws_dash, min_col=3, min_row=8, max_row=8 + len(unique_cats1))
+        cats_ref1 = Reference(ws_dash, min_col=2, min_row=9, max_row=8 + len(unique_cats1))
         bar.add_data(data_ref1, titles_from_data=True)
         bar.set_categories(cats_ref1)
-        bar.legend = None
-        bar.height = 10
-        bar.width = 14
-        ws_dash.add_chart(bar, "D7")
-        
-    # Dynamic Summary Table 2 (For Doughnut Chart)
-    start_r2 = 8 + len(unique_cats1) + 2
+        bar.height = 11
+        bar.width = 17
+        ws_dash.add_chart(bar, "E8")
+
+    # 5. Summary Table 2 & Native Doughnut Chart
+    start_s = tot_row1 + 3
     c2_idx = master_df.columns.get_loc(cat2) + 1
     c2_let = get_column_letter(c2_idx)
     
-    ws_dash[f"A{start_r2}"].value = cat2
-    ws_dash[f"B{start_r2}"].value = "PROPORTION COUNT"
-    ws_dash[f"A{start_r2}"].font = Font(name="Calibri", size=10, bold=True, color="FFFFFF")
-    ws_dash[f"A{start_r2}"].fill = header_fill
-    ws_dash[f"B{start_r2}"].font = Font(name="Calibri", size=10, bold=True, color="FFFFFF")
-    ws_dash[f"B{start_r2}"].fill = header_fill
+    ws_dash[f"B{start_s}"].value = cat2
+    ws_dash[f"C{start_s}"].value = "RECORD COUNT"
+    ws_dash[f"B{start_s}"].font = Font(name="Calibri", size=10, bold=True, color="FFFFFF")
+    ws_dash[f"B{start_s}"].fill = header_fill
+    ws_dash[f"C{start_s}"].font = Font(name="Calibri", size=10, bold=True, color="FFFFFF")
+    ws_dash[f"C{start_s}"].fill = header_fill
     
-    clean_series2 = master_df[cat2].astype(str).str.strip().str.upper().replace("", pd.NA).dropna()
     unique_cats2 = clean_series2.value_counts().head(6).index.tolist()
-    
-    for i, val in enumerate(unique_cats2, start=start_r2 + 1):
-        ws_dash[f"A{i}"].value = str(val)
-        ws_dash[f"B{i}"].value = f"=COUNTIF('{data_sheet_name}'!${c2_let}$2:${c2_let}${len(master_df)+1}, A{i})"
-        ws_dash[f"A{i}"].font = regular_font
-        ws_dash[f"B{i}"].font = regular_font
-        ws_dash[f"A{i}"].border = thin_border
-        ws_dash[f"B{i}"].border = thin_border
-        ws_dash[f"B{i}"].alignment = Alignment(horizontal="center", vertical="center")
-        
+    for idx, val in enumerate(unique_cats2, start=start_s + 1):
+        ws_dash[f"B{idx}"].value = str(val)
+        ws_dash[f"C{idx}"].value = f"=COUNTIF('{data_sheet_name}'!${c2_let}$2:${c2_let}${len(master_df)+1}, B{idx})"
+        ws_dash[f"B{idx}"].font = regular_font
+        ws_dash[f"C{idx}"].font = regular_font
+        ws_dash[f"B{idx}"].border = thin_card_border
+        ws_dash[f"C{idx}"].border = thin_card_border
+        ws_dash[f"C{idx}"].alignment = Alignment(horizontal="center", vertical="center")
+
+    tot_row2 = start_s + 1 + len(unique_cats2)
+    ws_dash[f"B{tot_row2}"].value = "TOTAL"
+    ws_dash[f"B{tot_row2}"].font = Font(name="Calibri", size=10, bold=True, color=TEXT_DARK)
+    ws_dash[f"C{tot_row2}"].value = f"=SUM(C{start_s+1}:C{tot_row2-1})"
+    ws_dash[f"C{tot_row2}"].font = Font(name="Calibri", size=10, bold=True, color=TEXT_DARK)
+    ws_dash[f"B{tot_row2}"].border = thin_card_border
+    ws_dash[f"C{tot_row2}"].border = thin_card_border
+    ws_dash[f"C{tot_row2}"].alignment = Alignment(horizontal="center", vertical="center")
+
     if len(unique_cats2) > 0:
         donut = DoughnutChart()
         donut.title = f"Proportion of {cat2}"
-        data_ref2 = Reference(ws_dash, min_col=2, min_row=start_r2, max_row=start_r2 + len(unique_cats2))
-        cats_ref2 = Reference(ws_dash, min_col=1, min_row=start_r2 + 1, max_row=start_r2 + len(unique_cats2))
+        donut.holeSize = 55
+        donut.dataLabels = DataLabelList()
+        donut.dataLabels.showPercent = True
+        donut.dataLabels.showVal = False
+        if donut.legend:
+            donut.legend.legendPos = "r"
+            
+        data_ref2 = Reference(ws_dash, min_col=3, min_row=start_s, max_row=start_s + len(unique_cats2))
+        cats_ref2 = Reference(ws_dash, min_col=2, min_row=start_s + 1, max_row=start_s + len(unique_cats2))
         donut.add_data(data_ref2, titles_from_data=True)
         donut.set_categories(cats_ref2)
-        donut.height = 10
-        donut.width = 14
-        ws_dash.add_chart(donut, f"D{start_r2}")
-        
+        donut.height = 11
+        donut.width = 17
+        ws_dash.add_chart(donut, f"E{start_s}")
+
     for col in ws_dash.columns:
         max_len = 0
         col_letter = get_column_letter(col[0].column)
@@ -697,7 +781,7 @@ def generate_smart_dashboard_excel_workbook(sheets_map, master_df):
             val_s = str(cell.value or "")
             if len(val_s) > max_len and not val_s.startswith("="):
                 max_len = len(val_s)
-        ws_dash.column_dimensions[col_letter].width = max(max_len + 4, 18)
+        ws_dash.column_dimensions[col_letter].width = max(max_len + 4, 16)
         
     buf = io.BytesIO()
     wb.save(buf)
@@ -710,12 +794,24 @@ def generate_ai_copilot_excel_workbook(sheets_map, master_df, ai_spec):
     wb = openpyxl.Workbook()
     wb.remove(wb.active)
     
+    BRAND_GREEN = "107C41"
+    CARD_BG = "F8FAFC"
+    CARD_BORDER_CLR = "CBD5E1"
+    TEXT_DARK = "0F172A"
+    TEXT_MUTED = "64748B"
+
     header_font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
-    header_fill = PatternFill(start_color="107C41", end_color="107C41", fill_type="solid")
-    regular_font = Font(name="Calibri", size=10, color="1F2937")
+    header_fill = PatternFill(start_color=BRAND_GREEN, end_color=BRAND_GREEN, fill_type="solid")
+    card_fill = PatternFill(start_color=CARD_BG, end_color=CARD_BG, fill_type="solid")
+    regular_font = Font(name="Calibri", size=10, color=TEXT_DARK)
+    
     thin_border = Border(
         left=Side(style='thin', color='E5E7EB'), right=Side(style='thin', color='E5E7EB'),
         top=Side(style='thin', color='E5E7EB'), bottom=Side(style='thin', color='E5E7EB')
+    )
+    thin_card_border = Border(
+        left=Side(style='thin', color=CARD_BORDER_CLR), right=Side(style='thin', color=CARD_BORDER_CLR),
+        top=Side(style='thin', color=CARD_BORDER_CLR), bottom=Side(style='thin', color=CARD_BORDER_CLR)
     )
     zebra_fill = PatternFill(start_color="F9FAFB", end_color="F9FAFB", fill_type="solid")
     
@@ -765,26 +861,42 @@ def generate_ai_copilot_excel_workbook(sheets_map, master_df, ai_spec):
     ws_ai = wb.create_sheet(title="Custom AI Dashboard", index=0)
     ws_ai.views.sheetView[0].showGridLines = True
     
-    ws_ai.merge_cells("A1:K1")
-    t_cell = ws_ai["A1"]
+    ws_ai.merge_cells("B2:M2")
+    t_cell = ws_ai["B2"]
     t_cell.value = "   🤖 AI COPILOT CUSTOM VISUAL DASHBOARD"
     t_cell.font = Font(name="Calibri", size=14, bold=True, color="FFFFFF")
     t_cell.fill = PatternFill(start_color="0284C7", end_color="0284C7", fill_type="solid")
     t_cell.alignment = Alignment(horizontal="left", vertical="center")
-    ws_ai.row_dimensions[1].height = 36
+    ws_ai.row_dimensions[2].height = 36
     
     # Custom KPIs
     kpis = ai_spec.get("kpi_cards", [])
     for idx, k in enumerate(kpis[:3]):
-        c_letter = get_column_letter(1 + idx * 2)
-        ws_ai[f"{c_letter}3"].value = str(k.get("label", "Metric")).upper()
-        ws_ai[f"{c_letter}3"].font = Font(name="Calibri", size=9, color="6B7280", bold=True)
-        ws_ai[f"{c_letter}4"].value = str(k.get("value", "-"))
-        ws_ai[f"{c_letter}4"].font = Font(name="Calibri", size=16, color="0284C7", bold=True)
+        c_start = 2 + idx * 4
+        c_end = c_start + 2
+        col_s_let = get_column_letter(c_start)
+        col_e_let = get_column_letter(c_end)
         
+        ws_ai.merge_cells(f"{col_s_let}4:{col_e_let}4")
+        ws_ai.merge_cells(f"{col_s_let}5:{col_e_let}5")
+        ws_ai[f"{col_s_let}4"].value = str(k.get("label", "Metric")).upper()
+        ws_ai[f"{col_s_let}4"].font = Font(name="Calibri", size=9, bold=True, color=TEXT_MUTED)
+        ws_ai[f"{col_s_let}5"].value = str(k.get("value", "-"))
+        ws_ai[f"{col_s_let}5"].font = Font(name="Calibri", size=18, bold=True, color="0284C7")
+        
+        for r in range(4, 6):
+            for c in range(c_start, c_end + 1):
+                cell = ws_ai.cell(row=r, column=c)
+                cell.fill = card_fill
+                cell.border = thin_card_border
+                cell.alignment = Alignment(horizontal="center", vertical="center")
+                
+    ws_ai.row_dimensions[4].height = 18
+    ws_ai.row_dimensions[5].height = 30
+    
     # Render Custom Chart Summary Tables & Native Charts
     charts = ai_spec.get("charts", [])
-    start_row = 7
+    start_row = 8
     for c_idx, c_info in enumerate(charts[:2]):
         g_col = c_info.get("group_by_col")
         if g_col not in master_df.columns:
@@ -793,48 +905,67 @@ def generate_ai_copilot_excel_workbook(sheets_map, master_df, ai_spec):
         col_idx_data = master_df.columns.get_loc(g_col) + 1
         col_let_data = get_column_letter(col_idx_data)
         
-        ws_ai[f"A{start_row}"].value = g_col
-        ws_ai[f"B{start_row}"].value = "CALCULATED COUNT"
-        ws_ai[f"A{start_row}"].font = Font(name="Calibri", size=10, bold=True, color="FFFFFF")
-        ws_ai[f"A{start_row}"].fill = header_fill
+        ws_ai[f"B{start_row}"].value = g_col
+        ws_ai[f"C{start_row}"].value = "CALCULATED COUNT"
         ws_ai[f"B{start_row}"].font = Font(name="Calibri", size=10, bold=True, color="FFFFFF")
         ws_ai[f"B{start_row}"].fill = header_fill
+        ws_ai[f"C{start_row}"].font = Font(name="Calibri", size=10, bold=True, color="FFFFFF")
+        ws_ai[f"C{start_row}"].fill = header_fill
         
         clean_s = master_df[g_col].astype(str).str.strip().str.upper().replace("", pd.NA).dropna()
         cats = clean_s.value_counts().head(8).index.tolist()
         
         for r_offset, c_val in enumerate(cats, start=1):
             curr_row = start_row + r_offset
-            ws_ai[f"A{curr_row}"].value = str(c_val)
-            ws_ai[f"B{curr_row}"].value = f"=COUNTIF('{data_sheet_name}'!${col_let_data}$2:${col_let_data}${len(master_df)+1}, A{curr_row})"
-            ws_ai[f"A{curr_row}"].font = regular_font
+            ws_ai[f"B{curr_row}"].value = str(c_val)
+            ws_ai[f"C{curr_row}"].value = f"=COUNTIF('{data_sheet_name}'!${col_let_data}$2:${col_let_data}${len(master_df)+1}, B{curr_row})"
             ws_ai[f"B{curr_row}"].font = regular_font
-            ws_ai[f"A{curr_row}"].border = thin_border
-            ws_ai[f"B{curr_row}"].border = thin_border
-            ws_ai[f"B{curr_row}"].alignment = Alignment(horizontal="center", vertical="center")
+            ws_ai[f"C{curr_row}"].font = regular_font
+            ws_ai[f"B{curr_row}"].border = thin_card_border
+            ws_ai[f"C{curr_row}"].border = thin_card_border
+            ws_ai[f"C{curr_row}"].alignment = Alignment(horizontal="center", vertical="center")
             
+        tot_row = start_row + 1 + len(cats)
+        ws_ai[f"B{tot_row}"].value = "TOTAL"
+        ws_ai[f"B{tot_row}"].font = Font(name="Calibri", size=10, bold=True, color=TEXT_DARK)
+        ws_ai[f"C{tot_row}"].value = f"=SUM(C{start_row+1}:C{tot_row-1})"
+        ws_ai[f"C{tot_row}"].font = Font(name="Calibri", size=10, bold=True, color=TEXT_DARK)
+        ws_ai[f"B{tot_row}"].border = thin_card_border
+        ws_ai[f"C{tot_row}"].border = thin_card_border
+        ws_ai[f"C{tot_row}"].alignment = Alignment(horizontal="center", vertical="center")
+
         if len(cats) > 0:
             c_type = c_info.get("chart_type", "bar").lower()
             if c_type in ["pie", "donut"]:
                 ai_chart = DoughnutChart()
+                ai_chart.holeSize = 55
+                ai_chart.dataLabels = DataLabelList()
+                ai_chart.dataLabels.showPercent = True
+                ai_chart.dataLabels.showVal = False
+                if ai_chart.legend:
+                    ai_chart.legend.legendPos = "r"
             else:
                 ai_chart = BarChart()
                 ai_chart.type = "col"
                 ai_chart.legend = None
+                ai_chart.varyColors = True
+                ai_chart.gapWidth = 80
                 ai_chart.y_axis.title = "Count"
                 ai_chart.x_axis.title = g_col
+                ai_chart.dataLabels = DataLabelList()
+                ai_chart.dataLabels.showVal = True
                 
             ai_chart.title = c_info.get("title", f"Summary of {g_col}")
             ai_chart.style = 10
-            data_ref_ai = Reference(ws_ai, min_col=2, min_row=start_row, max_row=start_row + len(cats))
-            cats_ref_ai = Reference(ws_ai, min_col=1, min_row=start_row + 1, max_row=start_row + len(cats))
+            data_ref_ai = Reference(ws_ai, min_col=3, min_row=start_row, max_row=start_row + len(cats))
+            cats_ref_ai = Reference(ws_ai, min_col=2, min_row=start_row + 1, max_row=start_row + len(cats))
             ai_chart.add_data(data_ref_ai, titles_from_data=True)
             ai_chart.set_categories(cats_ref_ai)
-            ai_chart.height = 10
-            ai_chart.width = 14
-            ws_ai.add_chart(ai_chart, f"D{start_row}")
+            ai_chart.height = 11
+            ai_chart.width = 17
+            ws_ai.add_chart(ai_chart, f"E{start_row}")
             
-        start_row += len(cats) + 3
+        start_row = tot_row + 3
         
     for col in ws_ai.columns:
         max_len = 0
@@ -843,7 +974,7 @@ def generate_ai_copilot_excel_workbook(sheets_map, master_df, ai_spec):
             val_s = str(cell.value or "")
             if len(val_s) > max_len and not val_s.startswith("="):
                 max_len = len(val_s)
-        ws_ai.column_dimensions[col_letter].width = max(max_len + 4, 18)
+        ws_ai.column_dimensions[col_letter].width = max(max_len + 4, 16)
         
     buf = io.BytesIO()
     wb.save(buf)
@@ -993,7 +1124,6 @@ def render_plotly_chart(df, chart_spec):
             agg_df = plot_df.groupby(group_col)[metric_col].count().reset_index()
         val_col = metric_col
     else:
-        # Standardize text for clean grouped counts
         plot_df[group_col] = plot_df[group_col].astype(str).str.strip().str.upper()
         agg_df = plot_df[group_col].value_counts().reset_index()
         agg_df.columns = [group_col, 'Count']
@@ -1250,7 +1380,8 @@ if "extracted_data" in st.session_state:
             with kpi_col2:
                 candidate_cols = [c for c in master_df.columns if c not in ['SL. NO.', 'EMPLOYEE NAME', 'PHONE', 'PHONE NUMBER', 'NO.']]
                 cat_col = candidate_cols[0] if candidate_cols else master_df.columns[-1]
-                unique_cnt = master_df[cat_col].replace("", pd.NA).dropna().nunique()
+                clean_cat = master_df[cat_col].astype(str).str.strip().str.upper().replace("", pd.NA).dropna()
+                unique_cnt = clean_cat.nunique()
                 st.markdown(f"""
                 <div class="kpi-stat-card">
                     <div class="kpi-title">Unique {cat_col[:15]}</div>
@@ -1301,7 +1432,6 @@ if "extracted_data" in st.session_state:
             st.markdown("#### 💬 Ask AI to Build Any Custom Visual Chart")
             st.caption("Click a pre-built question to generate instantly, or describe custom requirements below.")
             
-            # Helper to execute Copilot queries
             def run_copilot_query(query_text):
                 with st.spinner(f"AI Copilot is analyzing and building dashboard for: '{query_text}'..."):
                     ai_spec = ask_ai_for_dashboard_spec(master_df, query_text, api_key)
