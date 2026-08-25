@@ -145,6 +145,18 @@ h1, h2, h3 {
     margin-bottom: 1rem;
 }
 
+/* Compact Document File Card */
+.doc-file-card {
+    background: rgba(17, 24, 39, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
 /* ENLARGED & PERMANENTLY VISIBLE DATA EDITOR ACTION TOOLBAR */
 [data-testid="stElementToolbar"] {
     opacity: 1 !important;
@@ -446,6 +458,16 @@ def create_unique_sheet_name(raw_name, index, seen_set):
     seen_set.add(candidate)
     return candidate
 
+# Pop-up Document Lightbox Modal
+@st.dialog("📄 Document Preview", width="large")
+def show_preview_modal(file_name, file_bytes, mime_type):
+    st.caption(f"Viewing: **{file_name}**")
+    if "image" in mime_type:
+        img = Image.open(io.BytesIO(file_bytes))
+        st.image(img, use_container_width=True)
+    elif "pdf" in mime_type:
+        st.info(f"📑 PDF File: **{file_name}** ({len(file_bytes)/1024:.1f} KB)")
+
 # Document Upload Section with Multiple File Support
 uploaded_files = st.file_uploader(
     "Drop your PDF document(s) or images here", 
@@ -462,15 +484,23 @@ if uploaded_files:
             file_bytes = file.read()
             files_data.append((file_bytes, file.type))
         
-        col_prev, col_action = st.columns([1, 2])
+        col_prev, col_action = st.columns([1.1, 1.9])
         with col_prev:
             st.subheader(f"📄 Uploaded Files ({len(uploaded_files)})")
             for idx, file in enumerate(uploaded_files):
-                if "image" in file.type:
-                    img = Image.open(io.BytesIO(files_data[idx][0]))
-                    st.image(img, caption=file.name, use_container_width=True)
-                elif file.type == "application/pdf":
-                    st.info(f"📑 PDF: **{file.name}** ({len(files_data[idx][0])/1024:.1f} KB)")
+                c_info, c_btn = st.columns([3, 1.2])
+                with c_info:
+                    icon = "🖼️" if "image" in file.type else "📑"
+                    short_name = file.name if len(file.name) < 22 else f"{file.name[:18]}...{file.name[-4:]}"
+                    st.markdown(f"""
+                    <div style="background: rgba(17, 24, 39, 0.85); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 7px 10px; margin-bottom: 6px;">
+                        <span style="font-size: 0.85rem; font-weight: 600; color: #e2e8f0;">{icon} {short_name}</span>
+                        <div style="font-size: 0.72rem; color: #94a3b8;">{len(files_data[idx][0])/1024:.1f} KB</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                with c_btn:
+                    if st.button("👁️ View", key=f"preview_btn_{idx}", use_container_width=True):
+                        show_preview_modal(file.name, files_data[idx][0], file.type)
                 
         with col_action:
             st.subheader("⚡ Convert to Excel")
