@@ -609,7 +609,7 @@ def generate_smart_dashboard_excel_workbook(sheets_map, master_df):
     ws_dash.views.sheetView[0].showGridLines = True
     
     # Title Banner
-    ws_dash.merge_cells("B2:M2")
+    ws_dash.merge_cells("B2:R2")
     t_cell = ws_dash["B2"]
     t_cell.value = "   📊 EXECUTIVE DATA INTELLIGENCE DASHBOARD"
     t_cell.font = Font(name="Calibri", size=14, bold=True, color="FFFFFF")
@@ -629,7 +629,6 @@ def generate_smart_dashboard_excel_workbook(sheets_map, master_df):
     top_val2 = clean_series2.mode().iloc[0] if not clean_series2.empty else "N/A"
     
     # 3 Corporate KPI Cards (B4:D5, F4:H5, J4:L5)
-    # Card 1: Total Records
     ws_dash.merge_cells("B4:D4")
     ws_dash.merge_cells("B5:D5")
     ws_dash["B4"].value = "TOTAL RECORDS PARSED"
@@ -643,7 +642,6 @@ def generate_smart_dashboard_excel_workbook(sheets_map, master_df):
             cell.border = thin_card_border
             cell.alignment = Alignment(horizontal="center", vertical="center")
 
-    # Card 2: Unique Classifications
     ws_dash.merge_cells("F4:H4")
     ws_dash.merge_cells("F5:H5")
     ws_dash["F4"].value = f"UNIQUE {cat1[:15]}"
@@ -657,7 +655,6 @@ def generate_smart_dashboard_excel_workbook(sheets_map, master_df):
             cell.border = thin_card_border
             cell.alignment = Alignment(horizontal="center", vertical="center")
 
-    # Card 3: Dominant Value
     ws_dash.merge_cells("J4:L4")
     ws_dash.merge_cells("J5:L5")
     ws_dash["J4"].value = f"DOMINANT {cat2[:14]}"
@@ -714,15 +711,21 @@ def generate_smart_dashboard_excel_workbook(sheets_map, master_df):
         bar.varyColors = True
         bar.legend = None
         bar.gapWidth = 80
+        
+        # Clean data labels: Numbers only
         bar.dataLabels = DataLabelList()
         bar.dataLabels.showVal = True
+        bar.dataLabels.showCatName = False
+        bar.dataLabels.showSerName = False
+        bar.dataLabels.showPercent = False
+        bar.dataLabels.showLegendKey = False
         
         data_ref1 = Reference(ws_dash, min_col=3, min_row=8, max_row=8 + len(unique_cats1))
         cats_ref1 = Reference(ws_dash, min_col=2, min_row=9, max_row=8 + len(unique_cats1))
         bar.add_data(data_ref1, titles_from_data=True)
         bar.set_categories(cats_ref1)
         bar.height = 11
-        bar.width = 17
+        bar.width = 16
         ws_dash.add_chart(bar, "E8")
 
     # 5. Summary Table 2 & Native Doughnut Chart
@@ -760,9 +763,14 @@ def generate_smart_dashboard_excel_workbook(sheets_map, master_df):
         donut = DoughnutChart()
         donut.title = f"Proportion of {cat2}"
         donut.holeSize = 55
+        
+        # Clean data labels: Percentages only
         donut.dataLabels = DataLabelList()
         donut.dataLabels.showPercent = True
         donut.dataLabels.showVal = False
+        donut.dataLabels.showCatName = False
+        donut.dataLabels.showSerName = False
+        donut.dataLabels.showLegendKey = False
         if donut.legend:
             donut.legend.legendPos = "r"
             
@@ -771,8 +779,9 @@ def generate_smart_dashboard_excel_workbook(sheets_map, master_df):
         donut.add_data(data_ref2, titles_from_data=True)
         donut.set_categories(cats_ref2)
         donut.height = 11
-        donut.width = 17
-        ws_dash.add_chart(donut, f"E{start_s}")
+        donut.width = 15
+        # Placed beside the Bar Chart for a side-by-side executive layout
+        ws_dash.add_chart(donut, "L8")
 
     for col in ws_dash.columns:
         max_len = 0
@@ -817,7 +826,6 @@ def generate_ai_copilot_excel_workbook(sheets_map, master_df, ai_spec):
     
     data_sheet_name = "Master Combined Records" if len(sheets_map) > 1 else list(sheets_map.keys())[0]
     
-    # Write Raw Data Sheets
     for title, df in sheets_map.items():
         ws = wb.create_sheet(title=title[:31])
         ws.views.sheetView[0].showGridLines = True
@@ -861,7 +869,7 @@ def generate_ai_copilot_excel_workbook(sheets_map, master_df, ai_spec):
     ws_ai = wb.create_sheet(title="Custom AI Dashboard", index=0)
     ws_ai.views.sheetView[0].showGridLines = True
     
-    ws_ai.merge_cells("B2:M2")
+    ws_ai.merge_cells("B2:R2")
     t_cell = ws_ai["B2"]
     t_cell.value = "   🤖 AI COPILOT CUSTOM VISUAL DASHBOARD"
     t_cell.font = Font(name="Calibri", size=14, bold=True, color="FFFFFF")
@@ -894,9 +902,10 @@ def generate_ai_copilot_excel_workbook(sheets_map, master_df, ai_spec):
     ws_ai.row_dimensions[4].height = 18
     ws_ai.row_dimensions[5].height = 30
     
-    # Render Custom Chart Summary Tables & Native Charts
     charts = ai_spec.get("charts", [])
     start_row = 8
+    chart_positions = ["E8", "L8"]
+    
     for c_idx, c_info in enumerate(charts[:2]):
         g_col = c_info.get("group_by_col")
         if g_col not in master_df.columns:
@@ -942,6 +951,9 @@ def generate_ai_copilot_excel_workbook(sheets_map, master_df, ai_spec):
                 ai_chart.dataLabels = DataLabelList()
                 ai_chart.dataLabels.showPercent = True
                 ai_chart.dataLabels.showVal = False
+                ai_chart.dataLabels.showCatName = False
+                ai_chart.dataLabels.showSerName = False
+                ai_chart.dataLabels.showLegendKey = False
                 if ai_chart.legend:
                     ai_chart.legend.legendPos = "r"
             else:
@@ -954,6 +966,10 @@ def generate_ai_copilot_excel_workbook(sheets_map, master_df, ai_spec):
                 ai_chart.x_axis.title = g_col
                 ai_chart.dataLabels = DataLabelList()
                 ai_chart.dataLabels.showVal = True
+                ai_chart.dataLabels.showCatName = False
+                ai_chart.dataLabels.showSerName = False
+                ai_chart.dataLabels.showPercent = False
+                ai_chart.dataLabels.showLegendKey = False
                 
             ai_chart.title = c_info.get("title", f"Summary of {g_col}")
             ai_chart.style = 10
@@ -962,8 +978,8 @@ def generate_ai_copilot_excel_workbook(sheets_map, master_df, ai_spec):
             ai_chart.add_data(data_ref_ai, titles_from_data=True)
             ai_chart.set_categories(cats_ref_ai)
             ai_chart.height = 11
-            ai_chart.width = 17
-            ws_ai.add_chart(ai_chart, f"E{start_row}")
+            ai_chart.width = 16 if c_idx == 0 else 15
+            ws_ai.add_chart(ai_chart, chart_positions[c_idx])
             
         start_row = tot_row + 3
         
