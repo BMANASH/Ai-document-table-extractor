@@ -10,7 +10,7 @@ from google.genai import types
 # Page Config
 st.set_page_config(
     page_title="SheetGen AI | Document to Excel Converter",
-    page_icon="📗",
+    page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -18,7 +18,7 @@ st.set_page_config(
 # Fetch API Key silently from Streamlit Secrets or Environment
 api_key = st.secrets.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY")
 
-# Modern Dark Theme & Typography
+# Modern Dark Theme Styling & SVG Badges
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap');
@@ -35,14 +35,21 @@ st.markdown("""
         font-weight: 700;
     }
     
+    .header-container {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-top: 0.5rem;
+        margin-bottom: 0.25rem;
+    }
+
     .excel-title {
         background: linear-gradient(135deg, #22c55e 0%, #10b981 50%, #38bdf8 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-        font-size: 2.6rem !important;
+        font-size: 2.75rem !important;
         font-weight: 800 !important;
         line-height: 1.15;
-        margin-bottom: 0.25rem;
     }
 
     .sub-heading {
@@ -99,9 +106,24 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Clean Sidebar without any API Input Boxes
+# Vector Excel Logo SVG
+EXCEL_LOGO_SVG = """
+<svg width="44" height="44" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect width="48" height="48" rx="10" fill="#107C41"/>
+    <path d="M15.5 33L21.8 24L16.2 15H21.2L24.3 20.8L27.4 15H32.4L26.7 24L33 33H28L24.2 26.8L20.4 33H15.5Z" fill="white"/>
+</svg>
+"""
+
+SIDEBAR_EXCEL_SVG = """
+<svg width="28" height="28" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align: middle; margin-right: 8px;">
+    <rect width="48" height="48" rx="8" fill="#107C41"/>
+    <path d="M15.5 33L21.8 24L16.2 15H21.2L24.3 20.8L27.4 15H32.4L26.7 24L33 33H28L24.2 26.8L20.4 33H15.5Z" fill="white"/>
+</svg>
+"""
+
+# Clean Sidebar
 with st.sidebar:
-    st.markdown("### 📗 SheetGen AI")
+    st.markdown(f'<div style="display:flex; align-items:center; gap:8px;">{SIDEBAR_EXCEL_SVG} <h3 style="margin:0; font-size:1.4rem;">SheetGen AI</h3></div>', unsafe_allow_html=True)
     st.caption("Automated Tabular Data Extraction Engine")
     st.markdown("---")
     st.markdown("""
@@ -115,9 +137,14 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("🟢 **System Status:** Ready")
 
-# Hero Header
+# Hero Header with Vector Excel Icon
 st.markdown('<div class="status-badge">⚡ Instant Document to Spreadsheet</div>', unsafe_allow_html=True)
-st.markdown('<div class="excel-title">📊 SheetGen AI</div>', unsafe_allow_html=True)
+st.markdown(f'''
+<div class="header-container">
+    {EXCEL_LOGO_SVG}
+    <div class="excel-title">SheetGen AI</div>
+</div>
+''', unsafe_allow_html=True)
 st.markdown('<div class="sub-heading">Upload any PDF or image table → Automatically convert it to a clean, editable Excel file.</div>', unsafe_allow_html=True)
 
 # 3 Step Visual Workflow Cards
@@ -235,7 +262,7 @@ if "extracted_data" in st.session_state:
     else:
         st.markdown("---")
         st.subheader("✏️ Review & Edit Tables")
-        st.caption("Double-click any cell below to fix any typos before downloading.")
+        st.caption("You can double-click any cell below to fix any typos before downloading.")
         
         edited_dfs = {}
         for idx, tbl in enumerate(tables):
