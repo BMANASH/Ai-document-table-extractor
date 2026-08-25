@@ -4,8 +4,8 @@ import io
 import json
 import os
 from PIL import Image
-from google import genai
-from google.genai import types
+import google.generativeai as genai
+from openai import OpenAI
 
 # Page Config
 st.set_page_config(
@@ -15,26 +15,25 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Fetch API Key silently from Streamlit Secrets or Environment
-api_key = st.secrets.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY")
+# Fetch Keys from Streamlit Secrets or Environment
+gemini_key = st.secrets.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY", "")
+openai_key = st.secrets.get("OPENAI_API_KEY") or os.environ.get("OPENAI_API_KEY", "")
 
 # Modern Dark Theme, Static Sidebar Lock & Motion UI CSS
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap');
 
-/* Global Background */
 .stApp {
     background: radial-gradient(circle at 50% 0%, #111827 0%, #080b11 75%, #05070a 100%) !important;
     color: #e2e8f0;
     font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
-/* Lock Sidebar to Static Width */
 section[data-testid="stSidebar"] {
-    min-width: 300px !important;
-    max-width: 300px !important;
-    width: 300px !important;
+    min-width: 310px !important;
+    max-width: 310px !important;
+    width: 310px !important;
     background-color: #0b0f19 !important;
     border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
 }
@@ -44,7 +43,6 @@ section[data-testid="stSidebar"] {
     pointer-events: none !important;
 }
 
-/* Typography */
 h1, h2, h3 {
     font-family: 'Space Grotesk', sans-serif !important;
     letter-spacing: -0.02em;
@@ -76,19 +74,16 @@ h1, h2, h3 {
     margin-bottom: 1.75rem;
 }
 
-/* Floating Motion UI Animations */
 @keyframes floatCard1 {
     0% { transform: translateY(0px); }
     50% { transform: translateY(-7px); }
     100% { transform: translateY(0px); }
 }
-
 @keyframes floatCard2 {
     0% { transform: translateY(0px); }
     50% { transform: translateY(-5px); }
     100% { transform: translateY(0px); }
 }
-
 @keyframes floatCard3 {
     0% { transform: translateY(0px); }
     50% { transform: translateY(-8px); }
@@ -115,17 +110,12 @@ h1, h2, h3 {
     box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5), 0 0 22px rgba(34, 197, 94, 0.25) !important;
 }
 
-/* Sidebar Capability Micro-Cards */
 .sidebar-item {
     background: rgba(17, 24, 39, 0.6);
     border: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: 8px;
     padding: 10px 12px;
     margin-bottom: 8px;
-    transition: border-color 0.2s ease;
-}
-.sidebar-item:hover {
-    border-color: rgba(34, 197, 94, 0.3);
 }
 .sidebar-title {
     font-size: 0.85rem;
@@ -177,34 +167,74 @@ EXCEL_ICON_MAIN = '<svg width="48" height="48" viewBox="0 0 48 48" fill="none" x
 
 EXCEL_ICON_SIDEBAR = '<svg width="28" height="28" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align: middle;"><rect x="14" y="6" width="28" height="36" rx="4" fill="#107C41"/><rect x="23" y="13" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="31" y="13" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="23" y="19" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="31" y="19" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="23" y="25" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="31" y="25" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="23" y="31" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="31" y="31" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="6" y="9" width="22" height="30" rx="3" fill="#185C37"/><path d="M11.5 30L15.3 24L11.8 18H15.2L17 21.5L18.8 18H22.2L18.7 24L22.5 30H19.1L17 26.2L14.9 30H11.5Z" fill="white"/></svg>'
 
-# Static Sidebar Configuration
+# Helper function to dynamically discover available Gemini models
+def get_available_gemini_models(key):
+    if not key:
+        return []
+    try:
+        genai.configure(api_key=key)
+        models = [
+            m.name.replace("models/", "")
+            for m in genai.list_models()
+            if "generateContent" in m.supported_generation_methods and "gemini" in m.name
+        ]
+        return models
+    except Exception:
+        return ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash-exp"]
+
+# Sidebar Configuration
 with st.sidebar:
     st.markdown(f'<div style="display:flex; align-items:center; gap:10px; margin-bottom: 6px;">{EXCEL_ICON_SIDEBAR}<span style="font-size:1.35rem; font-weight:700; color:#ffffff; font-family:\'Space Grotesk\',sans-serif;">SheetGen AI</span></div>', unsafe_allow_html=True)
-    st.caption("Automated Tabular Data Extraction Engine")
+    st.caption("Multi-Model Document Intelligence")
     st.markdown("<hr style='border:none; border-top:1px solid rgba(255,255,255,0.08); margin:12px 0;'>", unsafe_allow_html=True)
     
+    # Model Provider Selector
+    available_providers = []
+    if gemini_key:
+        available_providers.append("Google Gemini")
+    if openai_key:
+        available_providers.append("OpenAI")
+        
+    if not available_providers:
+        st.error("⚠️ No API keys found in Secrets.")
+        selected_provider = None
+        selected_model = None
+    else:
+        selected_provider = st.selectbox("AI Engine Provider", available_providers)
+        
+        if selected_provider == "Google Gemini":
+            gemini_models = get_available_gemini_models(gemini_key)
+            # Default to flash if present
+            default_idx = 0
+            for idx, m in enumerate(gemini_models):
+                if "flash" in m:
+                    default_idx = idx
+                    break
+            selected_model = st.selectbox("Select Model", gemini_models, index=default_idx)
+        else:
+            selected_model = st.selectbox("Select Model", ["gpt-4o", "gpt-4o-mini"])
+
+    st.markdown("<hr style='border:none; border-top:1px solid rgba(255,255,255,0.08); margin:12px 0;'>", unsafe_allow_html=True)
     st.markdown("<div style='font-size:0.8rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:#94a3b8; margin-bottom:10px;'>Core Capabilities</div>", unsafe_allow_html=True)
     
     sidebar_items_html = (
-        '<div class="sidebar-item"><div class="sidebar-title">📑 Batch File & PDF Parsing</div>'
-        '<div class="sidebar-desc">Upload multiple images or multi-page documents at once.</div></div>'
+        '<div class="sidebar-item"><div class="sidebar-title">📑 Multi-Engine Batch OCR</div>'
+        '<div class="sidebar-desc">Scans tables, rosters, handwritten notes, and PDF pages.</div></div>'
         '<div class="sidebar-item"><div class="sidebar-title">🗃️ Multi-Table Isolation</div>'
         '<div class="sidebar-desc">Separates distinct tables cleanly into separate tabs.</div></div>'
         '<div class="sidebar-item"><div class="sidebar-title">🧹 Number Sanitization</div>'
-        '<div class="sidebar-desc">Removes stray characters so Excel math formulas work instantly.</div></div>'
-        '<div class="sidebar-item"><div class="sidebar-title">✏️ In-Browser Data Grid</div>'
-        '<div class="sidebar-desc">Double-click cells to adjust values before downloading.</div></div>'
+        '<div class="sidebar-desc">Cleans currencies & symbols for instant formulas.</div></div>'
+        '<div class="sidebar-item"><div class="sidebar-title">✏️ Live Interactive Grid</div>'
+        '<div class="sidebar-desc">Double-click cells to adjust values in-browser.</div></div>'
         '<div class="sidebar-item"><div class="sidebar-title">📥 Native .xlsx Generator</div>'
-        '<div class="sidebar-desc">Produces standard multi-sheet Excel workbooks.</div></div>'
+        '<div class="sidebar-desc">Exports standard multi-sheet Excel workbooks.</div></div>'
     )
     st.markdown(sidebar_items_html, unsafe_allow_html=True)
-    
     st.markdown("<hr style='border:none; border-top:1px solid rgba(255,255,255,0.08); margin:12px 0;'>", unsafe_allow_html=True)
     st.markdown("🟢 **System Status:** Ready")
 
 # Hero Header
 st.markdown('<div class="status-badge">⚡ Instant Document to Spreadsheet</div>', unsafe_allow_html=True)
-
 main_header_html = f'<div class="header-wrapper">{EXCEL_ICON_MAIN}<div class="excel-title-text">SheetGen AI</div></div>'
 st.markdown(main_header_html, unsafe_allow_html=True)
 st.markdown('<div class="sub-heading">Upload single or batch images & PDFs → Automatically convert them to clean, editable Excel workbooks.</div>', unsafe_allow_html=True)
@@ -240,26 +270,25 @@ with col_card3:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# Multi-Model Resilient Processor
-def process_documents(files_data, key):
-    client = genai.Client(api_key=key)
-    prompt = """
-    You are an expert Data Specialist.
-    Analyze all the uploaded document(s) and/or image(s) carefully (including handwritten text and registers):
+# Multi-Provider Document Processing Function
+def process_documents_multi(files_data, provider, model_name):
+    prompt_text = """
+    You are an expert Data Specialist and OCR Analyst.
+    Analyze all the uploaded document(s) and image(s) carefully (including handwritten text and registers):
     
     1. EXTRACT ALL DISTINCT TABLES:
        - Identify every separate table clearly across all uploaded files and pages.
        - Assign an intuitive, distinct title for each detected table (e.g. Employee Roster, P&L Statement, Invoice Breakdown).
        - Accurately transcribe names, numbers, phone numbers, states, and remarks.
-       - Provide standard column headers.
+       - Provide standard, clean column headers.
        
     2. SUMMARY & PATTERNS:
-       - What kind of data is this overall (e.g., Attendance Register, Financial Ledger, Roster, Inventory)?
-       - Write a concise, bulleted executive summary with patterns, key observations, and totals across the uploaded files.
+       - What kind of data is this overall?
+       - Write a concise bulleted summary of key patterns, observations, and counts.
 
     Return your response strictly as valid JSON matching this schema:
     {
-      "analysis": "Short Markdown summary of key business insights across all files.",
+      "analysis": "Short Markdown summary of key business insights.",
       "tables": [
         {
           "table_name": "Intuitive Table Name",
@@ -272,53 +301,51 @@ def process_documents(files_data, key):
       ]
     }
     """
-    contents = []
-    for file_bytes, mime_type in files_data:
-        contents.append(types.Part.from_bytes(data=file_bytes, mime_type=mime_type))
-    contents.append(prompt)
-
-    # Automated Model Candidate Fallback
-    model_candidates = [
-        "gemini-2.0-flash",
-        "gemini-2.0-flash-exp",
-        "gemini-1.5-flash-latest",
-        "gemini-1.5-pro-latest",
-        "gemini-1.5-flash",
-        "gemini-1.5-pro"
-    ]
     
-    response = None
-    last_error = None
-    
-    for candidate in model_candidates:
-        try:
-            response = client.models.generate_content(
-                model=candidate,
-                contents=contents,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json"
-                )
-            )
-            if response and response.text:
-                break
-        except Exception as err:
-            last_error = err
-            continue
+    if provider == "Google Gemini":
+        genai.configure(api_key=gemini_key)
+        model = genai.GenerativeModel(model_name)
+        
+        contents = []
+        for file_bytes, mime_type in files_data:
+            if "image" in mime_type:
+                img = Image.open(io.BytesIO(file_bytes))
+                contents.append(img)
+            elif "pdf" in mime_type:
+                contents.append({"mime_type": mime_type, "data": file_bytes})
+        contents.append(prompt_text)
+        
+        response = model.generate_content(contents)
+        raw_text = response.text.strip()
+    else:
+        # OpenAI Implementation
+        client = OpenAI(api_key=openai_key)
+        import base64
+        content_payload = [{"type": "text", "text": prompt_text}]
+        for file_bytes, mime_type in files_data:
+            b64_str = base64.b64encode(file_bytes).decode('utf-8')
+            content_payload.append({
+                "type": "image_url",
+                "image_url": {"url": f"data:{mime_type};base64,{b64_str}"}
+            })
+        
+        response = client.chat.completions.create(
+            model=model_name,
+            messages=[{"role": "user", "content": content_payload}],
+            response_format={"type": "json_object"}
+        )
+        raw_text = response.choices[0].message.content.strip()
 
-    if not response or not response.text:
-        raise Exception(f"All model endpoints failed. Last error: {last_error}")
+    # Sanitization of JSON wrapper
+    if raw_text.startswith("```json"):
+        raw_text = raw_text[7:]
+    if raw_text.startswith("```"):
+        raw_text = raw_text[3:]
+    if raw_text.endswith("```"):
+        raw_text = raw_text[:-3]
+    return raw_text.strip()
 
-    # Clean possible markdown wrap
-    text = response.text.strip()
-    if text.startswith("```json"):
-        text = text[7:]
-    if text.startswith("```"):
-        text = text[3:]
-    if text.endswith("```"):
-        text = text[:-3]
-    return text.strip()
-
-# Document Upload Section with Multiple File Support
+# Document Upload Section
 uploaded_files = st.file_uploader(
     "Drop your PDF document(s) or images here", 
     type=["pdf", "png", "jpg", "jpeg"], 
@@ -326,8 +353,8 @@ uploaded_files = st.file_uploader(
 )
 
 if uploaded_files:
-    if not api_key:
-        st.error("⚠️ System Error: API Key not configured in Streamlit Secrets. Please add GEMINI_API_KEY to your app secrets.")
+    if not (gemini_key or openai_key):
+        st.error("⚠️ System Error: No API keys configured in Streamlit Secrets.")
     else:
         files_data = []
         for file in uploaded_files:
@@ -346,11 +373,11 @@ if uploaded_files:
                 
         with col_action:
             st.subheader("⚡ Convert to Excel")
-            st.caption(f"Process all {len(uploaded_files)} file(s), extract tables, and compile into a unified spreadsheet.")
+            st.caption(f"Using **{selected_provider} ({selected_model})** to extract tables and compile into a unified spreadsheet.")
             if st.button("🚀 Extract Tables & Convert to Excel", type="primary", use_container_width=True):
-                with st.spinner(f"Analyzing {len(uploaded_files)} file(s) and generating Excel workbook..."):
+                with st.spinner(f"Processing with {selected_model}..."):
                     try:
-                        raw_json_str = process_documents(files_data, api_key)
+                        raw_json_str = process_documents_multi(files_data, selected_provider, selected_model)
                         data = json.loads(raw_json_str)
                         st.session_state["extracted_data"] = data
                         st.toast(f"Successfully processed {len(uploaded_files)} file(s)!", icon="✅")
@@ -371,7 +398,7 @@ if "extracted_data" in st.session_state:
     else:
         st.markdown("---")
         st.subheader("✏️ Review & Edit Tables")
-        st.caption("You can double-click any cell below to fix any typos before downloading.")
+        st.caption("Double-click any cell below to fix any typos before downloading.")
         
         edited_dfs = {}
         for idx, tbl in enumerate(tables):
