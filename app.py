@@ -142,6 +142,21 @@ h1, h2, h3 {
     margin-bottom: 1rem;
 }
 
+/* Green Download Button */
+.stDownloadButton > button {
+    background: linear-gradient(135deg, #16a34a 0%, #15803d 100%) !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    border: none !important;
+    border-radius: 10px !important;
+    padding: 0.65rem 1.75rem !important;
+    box-shadow: 0 0 20px rgba(22, 163, 74, 0.4) !important;
+}
+.stDownloadButton > button:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 0 28px rgba(22, 163, 74, 0.65) !important;
+}
+
 .stButton > button[kind="primary"] {
     background: linear-gradient(135deg, #16a34a 0%, #15803d 100%) !important;
     color: #ffffff !important;
@@ -166,9 +181,6 @@ EXCEL_ICON_MAIN = '<svg width="48" height="48" viewBox="0 0 48 48" fill="none" x
 
 EXCEL_ICON_SIDEBAR = '<svg width="28" height="28" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align: middle;"><rect x="14" y="6" width="28" height="36" rx="4" fill="#107C41"/><rect x="23" y="13" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="31" y="13" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="23" y="19" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="31" y="19" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="23" y="25" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="31" y="25" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="23" y="31" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="31" y="31" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="6" y="9" width="22" height="30" rx="3" fill="#185C37"/><path d="M11.5 30L15.3 24L11.8 18H15.2L17 21.5L18.8 18H22.2L18.7 24L22.5 30H19.1L17 26.2L14.9 30H11.5Z" fill="white"/></svg>'
 
-# Target Model
-ACTIVE_MODEL_NAME = "gemini-3.6-flash"
-
 # Static Sidebar Configuration
 with st.sidebar:
     st.markdown(f'<div style="display:flex; align-items:center; gap:10px; margin-bottom: 6px;">{EXCEL_ICON_SIDEBAR}<span style="font-size:1.35rem; font-weight:700; color:#ffffff; font-family:\'Space Grotesk\',sans-serif;">SheetGen AI</span></div>', unsafe_allow_html=True)
@@ -181,17 +193,17 @@ with st.sidebar:
         '<div class="sidebar-item"><div class="sidebar-title">⚡ Instant Image Optimizer</div>'
         '<div class="sidebar-desc">Rapid OCR for handwritten registers and multi-page tables.</div></div>'
         '<div class="sidebar-item"><div class="sidebar-title">🗃️ Multi-Table Isolation</div>'
-        '<div class="sidebar-desc">Separates distinct tables cleanly into separate tabs.</div></div>'
+        '<div class="sidebar-desc">Guaranteed distinct tabs for each uploaded page/table.</div></div>'
         '<div class="sidebar-item"><div class="sidebar-title">🧹 Number Sanitization</div>'
         '<div class="sidebar-desc">Removes noise and prepares numbers for immediate formulas.</div></div>'
         '<div class="sidebar-item"><div class="sidebar-title">✏️ In-Browser Data Grid</div>'
         '<div class="sidebar-desc">Double-click cells to adjust values before downloading.</div></div>'
         '<div class="sidebar-item"><div class="sidebar-title">📥 Native .xlsx Generator</div>'
-        '<div class="sidebar-desc">Produces standard multi-sheet Excel workbooks.</div></div>'
+        '<div class="sidebar-desc">Multi-sheet Excel workbook with combined data master tab.</div></div>'
     )
     st.markdown(sidebar_items_html, unsafe_allow_html=True)
     st.markdown("<hr style='border:none; border-top:1px solid rgba(255,255,255,0.08); margin:12px 0;'>", unsafe_allow_html=True)
-    st.markdown(f"🟢 **Active Engine:** `{ACTIVE_MODEL_NAME}`")
+    st.markdown("🟢 **System Status:** Ready")
 
 # Hero Header
 st.markdown('<div class="status-badge">⚡ Instant Document to Spreadsheet</div>', unsafe_allow_html=True)
@@ -230,24 +242,21 @@ with col_card3:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# Fast In-Memory Image Resizer
+# Fast In-Memory Image Resizer (1600px optimal dimension for sub-second network transfers)
 def prepare_image(raw_bytes):
     img = Image.open(io.BytesIO(raw_bytes))
     if img.mode != "RGB":
         img = img.convert("RGB")
-    
-    # Scale large mobile phone images to maximum 1600px edge for instant network transmission
     max_dim = 1600
     if max(img.size) > max_dim:
         img.thumbnail((max_dim, max_dim), Image.Resampling.LANCZOS)
-        
     out = io.BytesIO()
     img.save(out, format="JPEG", quality=85, optimize=True)
     out.seek(0)
     return Image.open(out)
 
-# Fast Extraction Pipeline via Gemini 3.6 Flash
-def execute_extraction(files_data, key_str):
+# Multi-Model Resilient Cascade (Falls back seamlessly if one model hits quota)
+def execute_extraction_cascade(files_data, key_str):
     genai.configure(api_key=key_str)
     
     prompt = """
@@ -256,17 +265,17 @@ def execute_extraction(files_data, key_str):
     
     1. EXTRACT ALL DISTINCT TABLES:
        - Transcribe every row, column header, serial number, name, phone number, and remark accurately.
-       - Separate distinct tables with intuitive table names.
+       - Separate distinct pages or sections into distinct tables with descriptive titles (e.g. Page 1 Register, Page 2 Register).
        
     2. EXECUTIVE SUMMARY:
-       - Give a 2-3 line concise summary of the data contents and total record count.
+       - Give a 2-3 line concise summary of the data contents and total record count across all pages.
 
     Return output strictly as valid JSON matching this schema:
     {
       "analysis": "Short executive summary.",
       "tables": [
         {
-          "table_name": "Table Name",
+          "table_name": "Page 1 - Register",
           "headers": ["Col 1", "Col 2", "Col 3"],
           "rows": [
             ["Row1 Col1", "Row1 Col2", "Row1 Col3"],
@@ -288,20 +297,45 @@ def execute_extraction(files_data, key_str):
             
     contents.append(prompt)
 
-    # Use gemini-3.6-flash as specified by Google API
-    model = genai.GenerativeModel("gemini-3.6-flash")
-    response = model.generate_content(
-        contents,
-        generation_config={"response_mime_type": "application/json"}
-    )
+    # Priority cascade list
+    model_cascade = ["gemini-3.6-flash", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash-latest"]
+    
+    last_err = None
+    for model_name in model_cascade:
+        try:
+            model = genai.GenerativeModel(model_name)
+            response = model.generate_content(
+                contents,
+                generation_config={"response_mime_type": "application/json"}
+            )
+            if response and response.text:
+                raw_text = response.text.strip()
+                if "```json" in raw_text:
+                    raw_text = raw_text.split("```json")[1].split("```")[0].strip()
+                elif "```" in raw_text:
+                    raw_text = raw_text.split("```")[1].split("```")[0].strip()
+                return raw_text, model_name
+        except Exception as err:
+            last_err = err
+            continue
 
-    raw_text = response.text.strip()
-    if "```json" in raw_text:
-        raw_text = raw_text.split("```json")[1].split("```")[0].strip()
-    elif "```" in raw_text:
-        raw_text = raw_text.split("```")[1].split("```")[0].strip()
-        
-    return raw_text
+    raise Exception(f"Extraction failed across models. Last Error: {last_err}")
+
+# Unique Sheet Name Generator (Fixes the 30-char tab collision bug)
+def create_unique_sheet_name(raw_name, index, seen_set):
+    clean = "".join(c for c in raw_name if c.isalnum() or c in (' ', '_', '-')).strip()
+    clean = clean.replace('_', ' ')
+    if not clean:
+        clean = f"Table {index+1}"
+    base_name = f"Sheet {index+1} - {clean[:18]}".strip()
+    candidate = base_name[:31]
+    count = 1
+    while candidate in seen_set:
+        suffix = f" ({count})"
+        candidate = base_name[:31 - len(suffix)] + suffix
+        count += 1
+    seen_set.add(candidate)
+    return candidate
 
 # Document Upload Section with Multiple File Support
 uploaded_files = st.file_uploader(
@@ -331,14 +365,15 @@ if uploaded_files:
                 
         with col_action:
             st.subheader("⚡ Convert to Excel")
-            st.caption(f"Extract and compile all {len(uploaded_files)} file(s) into a unified Excel spreadsheet.")
+            st.caption(f"Extract and compile all {len(uploaded_files)} file(s) into a unified multi-sheet Excel spreadsheet.")
             if st.button("🚀 Extract Tables & Convert to Excel", type="primary", use_container_width=True):
-                with st.spinner("Extracting tabular data via Gemini 3.6 Flash..."):
+                with st.spinner("Extracting tabular data across all files..."):
                     try:
-                        raw_json_str = execute_extraction(files_data, api_key)
+                        raw_json_str, used_model = execute_extraction_cascade(files_data, api_key)
                         data = json.loads(raw_json_str)
                         st.session_state["extracted_data"] = data
-                        st.toast("Extracted successfully in seconds!", icon="⚡")
+                        st.session_state["model_used"] = used_model
+                        st.toast(f"Extracted successfully via {used_model}!", icon="⚡")
                     except Exception as e:
                         st.error(f"Processing Error: {e}")
 
@@ -370,23 +405,33 @@ if "extracted_data" in st.session_state:
             edited_df = st.data_editor(df, key=f"editor_{idx}", num_rows="dynamic", use_container_width=True)
             edited_dfs[table_name] = edited_df
 
-        # Multi-Tab Excel Generator
+        # Multi-Tab Excel Generator with Unique Sheet Naming & Master Consolidated Sheet
         excel_buffer = io.BytesIO()
+        seen_sheets = set()
         with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
-            for name, df in edited_dfs.items():
-                clean_sheet_name = "".join(c for c in name if c.isalnum() or c in (' ', '_'))[:30]
-                df.to_excel(writer, sheet_name=clean_sheet_name or f"Sheet_{idx+1}", index=False)
+            # If multiple tables share similar structure, also prepend a master 'All Records' sheet
+            if len(edited_dfs) > 1:
+                try:
+                    combined_df = pd.concat(list(edited_dfs.values()), ignore_index=True)
+                    combined_df.to_excel(writer, sheet_name="All Combined Records", index=False)
+                    seen_sheets.add("All Combined Records")
+                except Exception:
+                    pass
+            
+            for idx, (name, df) in enumerate(edited_dfs.items()):
+                sheet_title = create_unique_sheet_name(name, idx, seen_sheets)
+                df.to_excel(writer, sheet_name=sheet_title, index=False)
+                
         excel_data = excel_buffer.getvalue()
 
         st.markdown("---")
         c1, c2 = st.columns(2)
         with c1:
             st.download_button(
-                label="📥 Download Unified Excel File (.xlsx)",
+                label=f"📥 Download Multi-Sheet Excel Workbook ({len(edited_dfs)} Sheets)",
                 data=excel_data,
-                file_name="sheetgen_extracted_data.xlsx",
+                file_name="sheetgen_multi_sheet_extracted.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                type="primary",
                 use_container_width=True
             )
         with c2:
@@ -394,11 +439,18 @@ if "extracted_data" in st.session_state:
                 first_df = list(edited_dfs.values())[0]
                 csv_data = first_df.to_csv(index=False).encode('utf-8')
                 st.download_button(
-                    label="📥 Download Flat File (.csv)",
+                    label="📥 Download Flat CSV (.csv)",
                     data=csv_data,
                     file_name="sheetgen_extracted_table.csv",
                     mime="text/csv",
                     use_container_width=True
                 )
             else:
-                st.info("ℹ️ Multiple tables detected: Download as Excel to preserve multi-sheet tabs.")
+                combined_csv = pd.concat(list(edited_dfs.values()), ignore_index=True).to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    label="📥 Download All Combined Data (.csv)",
+                    data=combined_csv,
+                    file_name="sheetgen_all_combined.csv",
+                    mime="text/csv",
+                    use_container_width=True
+                )
