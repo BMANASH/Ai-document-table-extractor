@@ -10,7 +10,7 @@ import google.generativeai as genai
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
-from openpyxl.chart import BarChart, PieChart, Reference
+from openpyxl.chart import BarChart, DoughnutChart, Reference
 import plotly.express as px
 import plotly.graph_objects as go
 
@@ -168,7 +168,6 @@ h1, h2, h3, h4 {
     margin-bottom: 1rem;
 }
 
-/* High-Visibility Upload Box */
 div[data-testid="stFileUploader"] {
     background: radial-gradient(circle at 50% 50%, rgba(34, 197, 94, 0.08) 0%, rgba(17, 24, 39, 0.85) 100%) !important;
     border: 2px dashed rgba(34, 197, 94, 0.6) !important;
@@ -204,7 +203,6 @@ div[data-testid="stFileUploader"] section button {
     transition: all 0.2s ease-in-out !important;
 }
 
-/* Glassmorphism KPI Stat Card */
 .kpi-stat-card {
     background: rgba(17, 24, 39, 0.75);
     border: 1px solid rgba(255, 255, 255, 0.08);
@@ -235,7 +233,6 @@ div[data-testid="stFileUploader"] section button {
     margin-top: 4px;
 }
 
-/* Data Editor Action Toolbar */
 [data-testid="stElementToolbar"] {
     opacity: 1 !important;
     visibility: visible !important;
@@ -276,7 +273,6 @@ div[data-testid="stFileUploader"] section button {
     fill: currentColor !important;
 }
 
-/* Emerald Green Download Buttons */
 .stDownloadButton > button {
     background: linear-gradient(135deg, #107C41 0%, #15803d 100%) !important;
     color: #ffffff !important;
@@ -303,7 +299,6 @@ div[data-testid="stFileUploader"] section button {
     box-shadow: 0 0 20px rgba(22, 163, 74, 0.4) !important;
 }
 
-/* Frosted-Glass Loading Animation Overlay */
 @keyframes spinRadarRing {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
@@ -425,7 +420,6 @@ st.markdown('<div class="sub-heading">Upload single or batch images & PDFs → C
 # 3 Step Visual Workflow Guide Header
 st.markdown('<div class="steps-title">📋 Steps to Convert, Visualize & Download</div>', unsafe_allow_html=True)
 
-# 3 Floating Motion Feature Cards
 col_card1, col_card2, col_card3 = st.columns(3)
 with col_card1:
     card1_html = (
@@ -540,13 +534,12 @@ def generate_base_excel_workbook(sheets_map):
     return buf.getvalue()
 
 # =========================================================================
-# EXCEL GENERATOR 2: DATA + SMART LIVE FORMULA DASHBOARD (.XLSX)
+# EXCEL GENERATOR 2: DATA + DYNAMIC LIVE FORMULA DASHBOARD (.XLSX)
 # =========================================================================
 def generate_smart_dashboard_excel_workbook(sheets_map, master_df):
     wb = openpyxl.Workbook()
     wb.remove(wb.active)
     
-    # 1. Create Raw Data Sheets first
     header_font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
     header_fill = PatternFill(start_color="107C41", end_color="107C41", fill_type="solid")
     regular_font = Font(name="Calibri", size=10, color="1F2937")
@@ -558,6 +551,7 @@ def generate_smart_dashboard_excel_workbook(sheets_map, master_df):
     
     data_sheet_name = "Master Combined Records" if len(sheets_map) > 1 else list(sheets_map.keys())[0]
     
+    # 1. Populate Raw Data Sheets
     for title, df in sheets_map.items():
         ws = wb.create_sheet(title=title[:31])
         ws.views.sheetView[0].showGridLines = True
@@ -597,12 +591,12 @@ def generate_smart_dashboard_excel_workbook(sheets_map, master_df):
                     max_len = len(val_s)
             ws.column_dimensions[col_letter].width = max(max_len + 4, 14)
             
-    # 2. Create Formula Dashboard Sheet at Index 0
+    # 2. Build Formula Dashboard Sheet at Index 0
     ws_dash = wb.create_sheet(title="Executive Dashboard", index=0)
     ws_dash.views.sheetView[0].showGridLines = True
     
     # Title Banner
-    ws_dash.merge_cells("A1:G1")
+    ws_dash.merge_cells("A1:K1")
     t_cell = ws_dash["A1"]
     t_cell.value = "   📊 EXECUTIVE DATA INTELLIGENCE DASHBOARD"
     t_cell.font = Font(name="Calibri", size=14, bold=True, color="FFFFFF")
@@ -610,52 +604,91 @@ def generate_smart_dashboard_excel_workbook(sheets_map, master_df):
     t_cell.alignment = Alignment(horizontal="left", vertical="center")
     ws_dash.row_dimensions[1].height = 36
     
-    # KPI 1: Live Total Records Formula
-    ws_dash["A3"].value = "TOTAL RECORDS PARSED"
+    # KPI 1: Live Record Count
+    ws_dash["A3"].value = "TOTAL RECORDS"
     ws_dash["A3"].font = Font(name="Calibri", size=9, color="6B7280", bold=True)
     ws_dash["A4"].value = f"=COUNTA('{data_sheet_name}'!B2:B{len(master_df)+1})"
     ws_dash["A4"].font = Font(name="Calibri", size=18, color="107C41", bold=True)
     
-    # Pick primary category column for formula aggregation
+    # Dynamically select two best categorical columns
     cat_candidates = [c for c in master_df.columns if c not in ['SL. NO.', 'EMPLOYEE NAME', 'PHONE', 'PHONE NUMBER', 'NO.']]
-    cat_col = cat_candidates[0] if cat_candidates else master_df.columns[-1]
-    col_idx_in_data = master_df.columns.get_loc(cat_col) + 1
-    col_letter_in_data = get_column_letter(col_idx_in_data)
+    cat1 = cat_candidates[0] if len(cat_candidates) > 0 else master_df.columns[0]
+    cat2 = cat_candidates[1] if len(cat_candidates) > 1 else cat1
     
-    # Aggregation Summary Table
-    ws_dash["A7"].value = cat_col
-    ws_dash["B7"].value = "LIVE RECORD COUNT"
+    # Dynamic Summary Table 1 (For Bar Chart)
+    c1_idx = master_df.columns.get_loc(cat1) + 1
+    c1_let = get_column_letter(c1_idx)
+    
+    ws_dash["A7"].value = cat1
+    ws_dash["B7"].value = "RECORD COUNT"
     ws_dash["A7"].font = Font(name="Calibri", size=10, bold=True, color="FFFFFF")
     ws_dash["A7"].fill = header_fill
     ws_dash["B7"].font = Font(name="Calibri", size=10, bold=True, color="FFFFFF")
     ws_dash["B7"].fill = header_fill
     
-    unique_cats = master_df[cat_col].replace("", pd.NA).dropna().unique().tolist()[:10]
-    for i, cat_val in enumerate(unique_cats, start=8):
-        ws_dash[f"A{i}"].value = str(cat_val)
-        # Live Excel Formula Linking to Data Sheet
-        ws_dash[f"B{i}"].value = f"=COUNTIF('{data_sheet_name}'!${col_letter_in_data}$2:${col_letter_in_data}${len(master_df)+1}, A{i})"
+    # Clean text to prevent case fragmentation
+    clean_series1 = master_df[cat1].astype(str).str.strip().str.upper().replace("", pd.NA).dropna()
+    unique_cats1 = clean_series1.value_counts().head(8).index.tolist()
+    
+    for i, val in enumerate(unique_cats1, start=8):
+        ws_dash[f"A{i}"].value = str(val)
+        ws_dash[f"B{i}"].value = f"=COUNTIF('{data_sheet_name}'!${c1_let}$2:${c1_let}${len(master_df)+1}, A{i})"
         ws_dash[f"A{i}"].font = regular_font
         ws_dash[f"B{i}"].font = regular_font
         ws_dash[f"A{i}"].border = thin_border
         ws_dash[f"B{i}"].border = thin_border
         ws_dash[f"B{i}"].alignment = Alignment(horizontal="center", vertical="center")
         
-    # Embed Native Excel Bar Chart
-    if len(unique_cats) > 0:
-        chart = BarChart()
-        chart.type = "col"
-        chart.style = 10
-        chart.title = f"Distribution by {cat_col}"
-        chart.y_axis.title = "Count"
-        chart.x_axis.title = cat_col
-        data_ref = Reference(ws_dash, min_col=2, min_row=7, max_row=7 + len(unique_cats))
-        cats_ref = Reference(ws_dash, min_col=1, min_row=8, max_row=7 + len(unique_cats))
-        chart.add_data(data_ref, titles_from_data=True)
-        chart.set_categories(cats_ref)
-        chart.height = 10
-        chart.width = 15
-        ws_dash.add_chart(chart, "D7")
+    if len(unique_cats1) > 0:
+        bar = BarChart()
+        bar.type = "col"
+        bar.style = 10
+        bar.title = f"Distribution by {cat1}"
+        bar.y_axis.title = "Count"
+        bar.x_axis.title = cat1
+        data_ref1 = Reference(ws_dash, min_col=2, min_row=7, max_row=7 + len(unique_cats1))
+        cats_ref1 = Reference(ws_dash, min_col=1, min_row=8, max_row=7 + len(unique_cats1))
+        bar.add_data(data_ref1, titles_from_data=True)
+        bar.set_categories(cats_ref1)
+        bar.legend = None
+        bar.height = 10
+        bar.width = 14
+        ws_dash.add_chart(bar, "D7")
+        
+    # Dynamic Summary Table 2 (For Doughnut Chart)
+    start_r2 = 8 + len(unique_cats1) + 2
+    c2_idx = master_df.columns.get_loc(cat2) + 1
+    c2_let = get_column_letter(c2_idx)
+    
+    ws_dash[f"A{start_r2}"].value = cat2
+    ws_dash[f"B{start_r2}"].value = "PROPORTION COUNT"
+    ws_dash[f"A{start_r2}"].font = Font(name="Calibri", size=10, bold=True, color="FFFFFF")
+    ws_dash[f"A{start_r2}"].fill = header_fill
+    ws_dash[f"B{start_r2}"].font = Font(name="Calibri", size=10, bold=True, color="FFFFFF")
+    ws_dash[f"B{start_r2}"].fill = header_fill
+    
+    clean_series2 = master_df[cat2].astype(str).str.strip().str.upper().replace("", pd.NA).dropna()
+    unique_cats2 = clean_series2.value_counts().head(6).index.tolist()
+    
+    for i, val in enumerate(unique_cats2, start=start_r2 + 1):
+        ws_dash[f"A{i}"].value = str(val)
+        ws_dash[f"B{i}"].value = f"=COUNTIF('{data_sheet_name}'!${c2_let}$2:${c2_let}${len(master_df)+1}, A{i})"
+        ws_dash[f"A{i}"].font = regular_font
+        ws_dash[f"B{i}"].font = regular_font
+        ws_dash[f"A{i}"].border = thin_border
+        ws_dash[f"B{i}"].border = thin_border
+        ws_dash[f"B{i}"].alignment = Alignment(horizontal="center", vertical="center")
+        
+    if len(unique_cats2) > 0:
+        donut = DoughnutChart()
+        donut.title = f"Proportion of {cat2}"
+        data_ref2 = Reference(ws_dash, min_col=2, min_row=start_r2, max_row=start_r2 + len(unique_cats2))
+        cats_ref2 = Reference(ws_dash, min_col=1, min_row=start_r2 + 1, max_row=start_r2 + len(unique_cats2))
+        donut.add_data(data_ref2, titles_from_data=True)
+        donut.set_categories(cats_ref2)
+        donut.height = 10
+        donut.width = 14
+        ws_dash.add_chart(donut, f"D{start_r2}")
         
     for col in ws_dash.columns:
         max_len = 0
@@ -732,8 +765,7 @@ def generate_ai_copilot_excel_workbook(sheets_map, master_df, ai_spec):
     ws_ai = wb.create_sheet(title="Custom AI Dashboard", index=0)
     ws_ai.views.sheetView[0].showGridLines = True
     
-    # Title Banner
-    ws_ai.merge_cells("A1:G1")
+    ws_ai.merge_cells("A1:K1")
     t_cell = ws_ai["A1"]
     t_cell.value = "   🤖 AI COPILOT CUSTOM VISUAL DASHBOARD"
     t_cell.font = Font(name="Calibri", size=14, bold=True, color="FFFFFF")
@@ -741,7 +773,7 @@ def generate_ai_copilot_excel_workbook(sheets_map, master_df, ai_spec):
     t_cell.alignment = Alignment(horizontal="left", vertical="center")
     ws_ai.row_dimensions[1].height = 36
     
-    # Custom KPIs from AI
+    # Custom KPIs
     kpis = ai_spec.get("kpi_cards", [])
     for idx, k in enumerate(kpis[:3]):
         c_letter = get_column_letter(1 + idx * 2)
@@ -750,7 +782,7 @@ def generate_ai_copilot_excel_workbook(sheets_map, master_df, ai_spec):
         ws_ai[f"{c_letter}4"].value = str(k.get("value", "-"))
         ws_ai[f"{c_letter}4"].font = Font(name="Calibri", size=16, color="0284C7", bold=True)
         
-    # Render Chart Summaries with Formulas
+    # Render Custom Chart Summary Tables & Native Charts
     charts = ai_spec.get("charts", [])
     start_row = 7
     for c_idx, c_info in enumerate(charts[:2]):
@@ -768,7 +800,9 @@ def generate_ai_copilot_excel_workbook(sheets_map, master_df, ai_spec):
         ws_ai[f"B{start_row}"].font = Font(name="Calibri", size=10, bold=True, color="FFFFFF")
         ws_ai[f"B{start_row}"].fill = header_fill
         
-        cats = master_df[g_col].replace("", pd.NA).dropna().unique().tolist()[:8]
+        clean_s = master_df[g_col].astype(str).str.strip().str.upper().replace("", pd.NA).dropna()
+        cats = clean_s.value_counts().head(8).index.tolist()
+        
         for r_offset, c_val in enumerate(cats, start=1):
             curr_row = start_row + r_offset
             ws_ai[f"A{curr_row}"].value = str(c_val)
@@ -778,6 +812,27 @@ def generate_ai_copilot_excel_workbook(sheets_map, master_df, ai_spec):
             ws_ai[f"A{curr_row}"].border = thin_border
             ws_ai[f"B{curr_row}"].border = thin_border
             ws_ai[f"B{curr_row}"].alignment = Alignment(horizontal="center", vertical="center")
+            
+        if len(cats) > 0:
+            c_type = c_info.get("chart_type", "bar").lower()
+            if c_type in ["pie", "donut"]:
+                ai_chart = DoughnutChart()
+            else:
+                ai_chart = BarChart()
+                ai_chart.type = "col"
+                ai_chart.legend = None
+                ai_chart.y_axis.title = "Count"
+                ai_chart.x_axis.title = g_col
+                
+            ai_chart.title = c_info.get("title", f"Summary of {g_col}")
+            ai_chart.style = 10
+            data_ref_ai = Reference(ws_ai, min_col=2, min_row=start_row, max_row=start_row + len(cats))
+            cats_ref_ai = Reference(ws_ai, min_col=1, min_row=start_row + 1, max_row=start_row + len(cats))
+            ai_chart.add_data(data_ref_ai, titles_from_data=True)
+            ai_chart.set_categories(cats_ref_ai)
+            ai_chart.height = 10
+            ai_chart.width = 14
+            ws_ai.add_chart(ai_chart, f"D{start_row}")
             
         start_row += len(cats) + 3
         
@@ -794,9 +849,7 @@ def generate_ai_copilot_excel_workbook(sheets_map, master_df, ai_spec):
     wb.save(buf)
     return buf.getvalue()
 
-# =========================================================================
-# MULTI-MODEL EXTRACTION CASCADE
-# =========================================================================
+# Universal Multi-Model Extraction Cascade
 def execute_extraction_cascade(files_data, key_str):
     genai.configure(api_key=key_str)
     
@@ -892,7 +945,7 @@ def ask_ai_for_dashboard_spec(df, user_instruction, key_str):
           "group_by_col": "Exact Column Name from dataframe",
           "metric_col": null, // Exact numeric column name or null for count
           "aggregation": "count", // Choose from: "count", "sum", "mean"
-          "top_n": 10
+          "top_n": 8
         }}
       ],
       "ai_insights": "2-3 lines explaining what the charts reveal."
@@ -922,7 +975,7 @@ def render_plotly_chart(df, chart_spec):
     group_col = chart_spec.get("group_by_col")
     metric_col = chart_spec.get("metric_col")
     agg = chart_spec.get("aggregation", "count").lower()
-    top_n = chart_spec.get("top_n", 10)
+    top_n = chart_spec.get("top_n", 8)
     
     if group_col not in df.columns:
         text_cols = [c for c in df.columns if c not in ['SL. NO.', 'NO.']]
@@ -940,6 +993,8 @@ def render_plotly_chart(df, chart_spec):
             agg_df = plot_df.groupby(group_col)[metric_col].count().reset_index()
         val_col = metric_col
     else:
+        # Standardize text for clean grouped counts
+        plot_df[group_col] = plot_df[group_col].astype(str).str.strip().str.upper()
         agg_df = plot_df[group_col].value_counts().reset_index()
         agg_df.columns = [group_col, 'Count']
         val_col = 'Count'
@@ -1156,7 +1211,6 @@ if "extracted_data" in st.session_state:
             
         base_excel_bytes = generate_base_excel_workbook(base_sheets_map)
         
-        # Mode 1 Download Button
         st.markdown("<div style='height: 6px;'></div>", unsafe_allow_html=True)
         st.download_button(
             label="📥 Download Clean Base Excel Workbook (.xlsx)",
@@ -1207,7 +1261,8 @@ if "extracted_data" in st.session_state:
 
             with kpi_col3:
                 sec_cat_col = candidate_cols[1] if len(candidate_cols) > 1 else cat_col
-                top_val = master_df[sec_cat_col].replace("", pd.NA).dropna().mode()
+                clean_sec = master_df[sec_cat_col].astype(str).str.strip().str.upper().replace("", pd.NA).dropna()
+                top_val = clean_sec.mode()
                 top_name = top_val.iloc[0] if not top_val.empty else "N/A"
                 st.markdown(f"""
                 <div class="kpi-stat-card">
@@ -1244,40 +1299,45 @@ if "extracted_data" in st.session_state:
         # TAB 2: MODE 3 - TALK WITH AI (CUSTOM COPILOT)
         with tab_copilot:
             st.markdown("#### 💬 Ask AI to Build Any Custom Visual Chart")
-            st.caption("Tell the AI what you want to visualize (e.g., *'Create a breakdown of records by State'*, *'Show me a bar chart comparing managers'*, or *'Plot a pie chart of status remarks'*).")
+            st.caption("Click a pre-built question to generate instantly, or describe custom requirements below.")
             
-            # Pre-Question Pills
-            st.markdown("<div style='font-size:0.8rem; font-weight:700; color:#38bdf8; margin-bottom:6px;'>💡 Pre-Built Quick Questions (Click to populate):</div>", unsafe_allow_html=True)
+            # Helper to execute Copilot queries
+            def run_copilot_query(query_text):
+                with st.spinner(f"AI Copilot is analyzing and building dashboard for: '{query_text}'..."):
+                    ai_spec = ask_ai_for_dashboard_spec(master_df, query_text, api_key)
+                    if ai_spec:
+                        st.session_state["custom_ai_spec"] = ai_spec
+                        st.session_state["active_chart_prompt"] = query_text
+                    else:
+                        st.error("Could not generate chart specification. Please rephrase your query.")
+
+            # Pre-Built Quick Question Action Chips
+            st.markdown("<div style='font-size:0.8rem; font-weight:700; color:#38bdf8; margin-bottom:6px;'>💡 Pre-Built Quick Questions (Click to auto-generate):</div>", unsafe_allow_html=True)
             col_q1, col_q2, col_q3 = st.columns(3)
-            
-            selected_prompt = ""
             with col_q1:
                 if st.button("📊 Breakdown by Category / Region", key="pq_1", use_container_width=True):
-                    selected_prompt = "Generate a bar chart showing distribution across primary categories or regions."
+                    run_copilot_query("Generate a bar chart showing distribution across primary categories or regions.")
             with col_q2:
                 if st.button("🍩 Top 5 Contributors (Donut Chart)", key="pq_2", use_container_width=True):
-                    selected_prompt = "Show a donut chart of top 5 groups or contributors with highest representation."
+                    run_copilot_query("Show a donut chart of top 5 groups or contributors with highest representation.")
             with col_q3:
                 if st.button("🔍 Exception & Remarks Audit", key="pq_3", use_container_width=True):
-                    selected_prompt = "Analyze remarks or status flags and display a visual breakdown of exceptions."
+                    run_copilot_query("Analyze remarks, status flags, or key metrics and display a visual breakdown of exceptions.")
 
+            # Freeform Prompt Input
+            current_prompt_val = st.session_state.get("active_chart_prompt", "")
             user_chart_prompt = st.text_input(
                 "Describe the chart or metrics you want to build:",
-                value=selected_prompt,
+                value=current_prompt_val,
                 placeholder="e.g. Compare total headcount across regions and show a pie chart of statuses...",
                 key="user_chart_prompt_input"
             )
 
             if st.button("✨ Generate Custom Visual Dashboard", type="primary", use_container_width=True):
-                if not user_chart_prompt:
-                    st.warning("Please enter a description or pick a quick question above.")
+                if user_chart_prompt:
+                    run_copilot_query(user_chart_prompt)
                 else:
-                    with st.spinner("AI Copilot is structuring your custom visualization..."):
-                        ai_spec = ask_ai_for_dashboard_spec(master_df, user_chart_prompt, api_key)
-                        if not ai_spec:
-                            st.error("Could not generate chart spec. Please try rephrasing your request.")
-                        else:
-                            st.session_state["custom_ai_spec"] = ai_spec
+                    st.warning("Please enter a description or click a quick question above.")
 
             # In-Browser Preview & Custom Excel Download
             if "custom_ai_spec" in st.session_state:
