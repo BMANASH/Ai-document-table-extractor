@@ -169,6 +169,51 @@ h1, h2, h3 {
     margin-bottom: 1rem;
 }
 
+/* =========================================================
+   HIGH-VISIBILITY ILLUMINATED FILE UPLOADER BOX
+   ========================================================= */
+div[data-testid="stFileUploader"] {
+    background: radial-gradient(circle at 50% 50%, rgba(34, 197, 94, 0.08) 0%, rgba(17, 24, 39, 0.85) 100%) !important;
+    border: 2px dashed rgba(34, 197, 94, 0.6) !important;
+    border-radius: 16px !important;
+    padding: 1.75rem 1.5rem !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45), 0 0 24px rgba(34, 197, 94, 0.15) !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+div[data-testid="stFileUploader"]:hover {
+    border-color: #22c55e !important;
+    background: radial-gradient(circle at 50% 50%, rgba(34, 197, 94, 0.14) 0%, rgba(17, 24, 39, 0.95) 100%) !important;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6), 0 0 35px rgba(34, 197, 94, 0.3) !important;
+    transform: translateY(-2px);
+}
+
+/* File Uploader Label Styling */
+div[data-testid="stFileUploader"] label {
+    font-size: 1.12rem !important;
+    font-weight: 700 !important;
+    color: #ffffff !important;
+    letter-spacing: -0.01em !important;
+    margin-bottom: 0.6rem !important;
+}
+
+/* Styled Inner Upload Button */
+div[data-testid="stFileUploader"] section button {
+    background: linear-gradient(135deg, #107C41 0%, #15803d 100%) !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    border-radius: 10px !important;
+    padding: 0.55rem 1.35rem !important;
+    box-shadow: 0 4px 16px rgba(16, 124, 65, 0.45) !important;
+    transition: all 0.2s ease-in-out !important;
+}
+
+div[data-testid="stFileUploader"] section button:hover {
+    transform: scale(1.05) !important;
+    box-shadow: 0 6px 22px rgba(16, 124, 65, 0.7) !important;
+}
+
 /* ENLARGED & PERMANENTLY VISIBLE DATA EDITOR ACTION TOOLBAR */
 [data-testid="stElementToolbar"] {
     opacity: 1 !important;
@@ -235,13 +280,6 @@ h1, h2, h3 {
     border-radius: 10px !important;
     padding: 0.65rem 1.75rem !important;
     box-shadow: 0 0 20px rgba(22, 163, 74, 0.4) !important;
-}
-
-div[data-testid="stFileUploader"] {
-    background: rgba(17, 24, 39, 0.5) !important;
-    border: 1px dashed rgba(255, 255, 255, 0.15) !important;
-    border-radius: 14px !important;
-    padding: 1.5rem !important;
 }
 
 /* Dialog Box Dark Theme */
@@ -492,7 +530,7 @@ def show_preview_modal(file_name, file_bytes, mime_type):
 
 # Document Upload Section with Multiple File Support
 uploaded_files = st.file_uploader(
-    "Drop your PDF document(s) or images here", 
+    "📥 Drop your PDF document(s) or images here", 
     type=["pdf", "png", "jpg", "jpeg"], 
     accept_multiple_files=True
 )
