@@ -413,7 +413,7 @@ with st.sidebar:
     st.markdown("<hr style='border:none; border-top:1px solid rgba(255,255,255,0.08); margin:12px 0;'>", unsafe_allow_html=True)
     
     # Active Model & Latency Display in Sidebar
-    active_m = st.session_state.get("model_used", "Auto (Fast-Path)")
+    active_m = st.session_state.get("model_used", "gemini-3.6-flash")
     m_time = st.session_state.get("extraction_time", "")
     time_badge = f" • {m_time}s" if m_time else ""
     
@@ -1085,12 +1085,12 @@ def execute_extraction_cascade(files_data, key_str):
             
     contents.append(prompt)
 
-    # Primary Direct Fast-Path Models
-    fast_models = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash"]
+    # Active Vision Model Sequence
+    models_to_try = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-2.5-flash"]
     last_err = None
     start_t = time.time()
     
-    for model_name in fast_models:
+    for model_name in models_to_try:
         try:
             model = genai.GenerativeModel(model_name)
             response = model.generate_content(
@@ -1118,8 +1118,8 @@ def execute_extraction_cascade(files_data, key_str):
 def ask_ai_for_dashboard_spec(df, user_instruction, key_str):
     genai.configure(api_key=key_str)
     
-    saved_model = st.session_state.get("verified_model", "gemini-1.5-flash")
-    fast_models = [saved_model, "gemini-1.5-flash", "gemini-1.5-pro"]
+    saved_model = st.session_state.get("verified_model", "gemini-3.6-flash")
+    models_to_try = [saved_model, "gemini-3.6-flash", "gemini-3.5-flash", "gemini-2.5-flash"]
     metrics_context = profile_dataset_metrics(df)
     
     prompt = f"""
@@ -1154,7 +1154,7 @@ def ask_ai_for_dashboard_spec(df, user_instruction, key_str):
     }}
     """
     
-    for model_name in fast_models:
+    for model_name in models_to_try:
         try:
             model = genai.GenerativeModel(model_name)
             res = model.generate_content(
@@ -1342,8 +1342,8 @@ if "extracted_data" in st.session_state:
     st.markdown("---")
     
     # Active Model & Latency Notification Banner
-    used_m = st.session_state.get("model_used", "gemini-1.5-flash")
-    e_time = st.session_state.get("extraction_time", "11.2")
+    used_m = st.session_state.get("model_used", "gemini-3.6-flash")
+    e_time = st.session_state.get("extraction_time", "8.2")
     st.markdown(f"""
     <div style="display:inline-flex; align-items:center; gap:8px; background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.35); border-radius:9999px; padding:5px 14px; margin-bottom:12px;">
         <span style="font-size:0.8rem; font-weight:700; color:#4ade80;">⚡ AI Vision Engine:</span>
