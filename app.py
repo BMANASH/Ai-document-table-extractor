@@ -3,7 +3,6 @@ import pandas as pd
 import io
 import json
 import os
-import re
 from PIL import Image
 from pypdf import PdfReader
 import google.generativeai as genai
@@ -170,26 +169,26 @@ EXCEL_ICON_SIDEBAR = '<svg width="28" height="28" viewBox="0 0 48 48" fill="none
 # Static Sidebar Configuration
 with st.sidebar:
     st.markdown(f'<div style="display:flex; align-items:center; gap:10px; margin-bottom: 6px;">{EXCEL_ICON_SIDEBAR}<span style="font-size:1.35rem; font-weight:700; color:#ffffff; font-family:\'Space Grotesk\',sans-serif;">SheetGen AI</span></div>', unsafe_allow_html=True)
-    st.caption("Automated Tabular Data Extraction Engine")
+    st.caption("Turbo Vision Table Synthesizer")
     st.markdown("<hr style='border:none; border-top:1px solid rgba(255,255,255,0.08); margin:12px 0;'>", unsafe_allow_html=True)
     
     st.markdown("<div style='font-size:0.8rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:#94a3b8; margin-bottom:10px;'>Core Capabilities</div>", unsafe_allow_html=True)
     
     sidebar_items_html = (
-        '<div class="sidebar-item"><div class="sidebar-title">📑 Batch OCR & PDF Parsing</div>'
-        '<div class="sidebar-desc">Scans multi-page financial statements, bills, and handwritten registers.</div></div>'
+        '<div class="sidebar-item"><div class="sidebar-title">⚡ Turbo Image Compression</div>'
+        '<div class="sidebar-desc">Fast OCR processing for handwritten registers and long tables.</div></div>'
         '<div class="sidebar-item"><div class="sidebar-title">🗃️ Multi-Table Isolation</div>'
         '<div class="sidebar-desc">Separates distinct tables cleanly into separate tabs.</div></div>'
         '<div class="sidebar-item"><div class="sidebar-title">🧹 Number Sanitization</div>'
-        '<div class="sidebar-desc">Removes stray characters so Excel math formulas work instantly.</div></div>'
+        '<div class="sidebar-desc">Cleans numbers and text for instant formulas.</div></div>'
         '<div class="sidebar-item"><div class="sidebar-title">✏️ In-Browser Data Grid</div>'
         '<div class="sidebar-desc">Double-click cells to adjust values before downloading.</div></div>'
         '<div class="sidebar-item"><div class="sidebar-title">📥 Native .xlsx Generator</div>'
-        '<div class="sidebar-desc">Produces standard multi-sheet Excel workbooks.</div></div>'
+        '<div class="sidebar-desc">Produces multi-sheet Excel workbooks.</div></div>'
     )
     st.markdown(sidebar_items_html, unsafe_allow_html=True)
     st.markdown("<hr style='border:none; border-top:1px solid rgba(255,255,255,0.08); margin:12px 0;'>", unsafe_allow_html=True)
-    st.markdown("🟢 **System Status:** Ready")
+    st.markdown("🟢 **Engine Status:** Turbo Active")
 
 # Hero Header
 st.markdown('<div class="status-badge">⚡ Instant Document to Spreadsheet</div>', unsafe_allow_html=True)
@@ -203,7 +202,7 @@ with col_card1:
     card1_html = (
         '<div class="feature-card card-anim-1">'
         '<div style="font-size: 1.15rem; font-weight:700; color:#4ade80; margin-bottom:4px;">1. Upload File(s)</div>'
-        '<div style="font-size:0.85rem; color:#94a3b8; line-height:1.4;">Drop scanned photos or multi-page PDFs containing data tables.</div>'
+        '<div style="font-size:0.85rem; color:#94a3b8; line-height:1.4;">Drop photos or PDFs containing tabular registers.</div>'
         '</div>'
     )
     st.markdown(card1_html, unsafe_allow_html=True)
@@ -212,7 +211,7 @@ with col_card2:
     card2_html = (
         '<div class="feature-card card-anim-2">'
         '<div style="font-size: 1.15rem; font-weight:700; color:#38bdf8; margin-bottom:4px;">2. AI Formats & Cleans</div>'
-        '<div style="font-size:0.85rem; color:#94a3b8; line-height:1.4;">Extracts rows, columns, and normalizes numeric values automatically.</div>'
+        '<div style="font-size:0.85rem; color:#94a3b8; line-height:1.4;">Extracts rows, columns, and transcribes values rapidly.</div>'
         '</div>'
     )
     st.markdown(card2_html, unsafe_allow_html=True)
@@ -221,76 +220,50 @@ with col_card3:
     card3_html = (
         '<div class="feature-card card-anim-3">'
         '<div style="font-size: 1.15rem; font-weight:700; color:#a78bfa; margin-bottom:4px;">3. Download Excel</div>'
-        '<div style="font-size:0.85rem; color:#94a3b8; line-height:1.4;">Get a clean multi-sheet Excel file (.xlsx) ready for formulas and charts.</div>'
+        '<div style="font-size:0.85rem; color:#94a3b8; line-height:1.4;">Get a clean multi-sheet Excel file (.xlsx) ready for use.</div>'
         '</div>'
     )
     st.markdown(card3_html, unsafe_allow_html=True)
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# Dynamic Discovery & Multi-Model Execution Engine
-def process_with_active_gemini(files_data, key):
+# High-Speed Image Optimizer (Downscales 4K mobile images to 1600px max edge)
+def optimize_image_for_fast_ocr(img_bytes):
+    image = Image.open(io.BytesIO(img_bytes))
+    if image.mode in ("RGBA", "P"):
+        image = image.convert("RGB")
+    
+    max_dimension = 1600
+    if max(image.size) > max_dimension:
+        image.thumbnail((max_dimension, max_dimension), Image.Resampling.LANCZOS)
+        
+    buf = io.BytesIO()
+    image.save(buf, format="JPEG", quality=85, optimize=True)
+    buf.seek(0)
+    return Image.open(buf)
+
+# Turbo Direct Execution Engine
+def process_fast_gemini(files_data, key):
     genai.configure(api_key=key)
     
-    # 1. Inspect all models active for this key
-    available_models = list(genai.list_models())
-    candidates = []
-    
-    for m in available_models:
-        methods = getattr(m, 'supported_generation_methods', [])
-        if 'generateContent' not in methods:
-            continue
-        m_name = m.name.lower()
-        # Filter out text-to-speech, embeddings, and non-vision endpoints
-        if any(unwanted in m_name for unwanted in ['tts', 'embedding', 'embed', 'aqa', 'imagen', 'realtime', 'bison']):
-            continue
-        candidates.append(m.name)
-
-    # 2. Intelligent Ranking (prioritizes latest flash & pro models)
-    def calculate_rank(name):
-        n = name.lower()
-        score = 0
-        if 'flash' in n:
-            score += 60
-        elif 'pro' in n:
-            score += 50
-            
-        # Parse version numbers to prioritize the newest active model
-        numbers = re.findall(r'\d+\.?\d*', n)
-        if numbers:
-            try:
-                score += float(numbers[0]) * 20
-            except ValueError:
-                pass
-        return score
-
-    candidates.sort(key=calculate_rank, reverse=True)
-    
-    if not candidates:
-        raise Exception("No active multimodal models found for this API key. Please check your Google AI Studio project.")
-
-    # 3. Assemble document payload
     prompt = """
     You are an expert Data Specialist and OCR Analyst.
-    Analyze all the uploaded document(s) and/or image(s) carefully (including handwritten text and registers):
+    Extract tabular data from the document(s) accurately and rapidly (including handwritten registers and rosters):
     
     1. EXTRACT ALL DISTINCT TABLES:
-       - Identify every separate table clearly across all uploaded files and pages.
-       - Assign an intuitive, distinct title for each detected table (e.g. Employee Roster, P&L Statement, Invoice Breakdown).
-       - Accurately transcribe names, numbers, phone numbers, states, and remarks.
-       - Provide standard column headers.
+       - Transcribe every row, column header, serial number, name, phone number, and remark accurately.
+       - Separate distinct tables with clear table names.
        
-    2. SUMMARY & PATTERNS:
-       - What kind of data is this overall (e.g., Attendance Register, Financial Ledger, Roster, Inventory)?
-       - Write a concise, bulleted executive summary with patterns, key observations, and totals across the uploaded files.
+    2. EXECUTIVE SUMMARY:
+       - Give a 2-3 line concise summary of the data contents and total record count.
 
-    Return your response strictly as valid JSON matching this schema:
+    Return your output STRICTLY as valid JSON matching this schema:
     {
-      "analysis": "Short Markdown summary of key business insights across all files.",
+      "analysis": "Short executive summary.",
       "tables": [
         {
-          "table_name": "Intuitive Table Name",
-          "headers": ["Header 1", "Header 2", "Header 3"],
+          "table_name": "Table Name",
+          "headers": ["Col 1", "Col 2", "Col 3"],
           "rows": [
             ["Row1 Col1", "Row1 Col2", "Row1 Col3"],
             ["Row2 Col1", "Row2 Col2", "Row2 Col3"]
@@ -303,23 +276,28 @@ def process_with_active_gemini(files_data, key):
     contents = []
     for file_bytes, mime_type in files_data:
         if "image" in mime_type:
-            img = Image.open(io.BytesIO(file_bytes))
-            contents.append(img)
+            optimized_img = optimize_image_for_fast_ocr(file_bytes)
+            contents.append(optimized_img)
         elif "pdf" in mime_type:
             reader = PdfReader(io.BytesIO(file_bytes))
-            pdf_text = "\n".join([page.extract_text() or "" for page in reader.pages])
+            pdf_text = "\n".join([p.extract_text() or "" for p in reader.pages])
             contents.append(f"PDF Content:\n{pdf_text}")
             
     contents.append(prompt)
 
-    # 4. Try candidates in sequence until successful
-    last_error = None
-    for model_name in candidates:
+    # Fast Direct Model Targets (No search overhead)
+    fast_models = ["gemini-1.5-flash", "gemini-1.5-flash-latest", "gemini-1.5-pro"]
+    
+    last_err = None
+    for model_name in fast_models:
         try:
             model = genai.GenerativeModel(model_name)
             response = model.generate_content(
                 contents,
-                generation_config={"response_mime_type": "application/json"}
+                generation_config=genai.types.GenerationConfig(
+                    temperature=0.1,
+                    response_mime_type="application/json"
+                )
             )
             if response and response.text:
                 text = response.text.strip()
@@ -329,12 +307,12 @@ def process_with_active_gemini(files_data, key):
                     text = text[3:]
                 if text.endswith("```"):
                     text = text[:-3]
-                return text.strip(), model_name
+                return text.strip()
         except Exception as e:
-            last_error = e
+            last_err = e
             continue
 
-    raise Exception(f"Failed across candidate models {candidates[:3]}. Last Error: {last_error}")
+    raise Exception(f"Extraction failed. Error: {last_err}")
 
 # Document Upload Section with Multiple File Support
 uploaded_files = st.file_uploader(
@@ -364,15 +342,14 @@ if uploaded_files:
                 
         with col_action:
             st.subheader("⚡ Convert to Excel")
-            st.caption(f"Process all {len(uploaded_files)} file(s), extract tables, and compile into a unified spreadsheet.")
+            st.caption(f"Extract and compile all {len(uploaded_files)} file(s) into a unified Excel spreadsheet.")
             if st.button("🚀 Extract Tables & Convert to Excel", type="primary", use_container_width=True):
-                with st.spinner("Discovering active AI engine and compiling Excel sheets..."):
+                with st.spinner("Extracting tabular data and generating Excel..."):
                     try:
-                        raw_json_str, used_model = process_with_active_gemini(files_data, api_key)
+                        raw_json_str = process_fast_gemini(files_data, api_key)
                         data = json.loads(raw_json_str)
                         st.session_state["extracted_data"] = data
-                        st.session_state["active_model_used"] = used_model
-                        st.toast(f"Successfully processed using {used_model}!", icon="✅")
+                        st.toast(f"Extracted successfully!", icon="⚡")
                     except Exception as e:
                         st.error(f"Processing Error: {e}")
 
