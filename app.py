@@ -472,6 +472,33 @@ def normalize_column_header(col_name):
         return 'SL. NO.'
     return c.upper()
 
+# Dynamic Dataset Statistical Profiler for AI Context
+def profile_dataset_metrics(df):
+    summary = {
+        "total_records": len(df),
+        "columns": list(df.columns),
+        "column_profiles": {}
+    }
+    for c in df.columns:
+        clean_s = df[c].astype(str).str.strip().str.upper().replace(["", "NAN", "NONE", "NULL"], pd.NA).dropna()
+        num_s = pd.to_numeric(clean_s.str.replace(r'[^\d.]', '', regex=True), errors='coerce').dropna()
+        if len(num_s) > len(clean_s) * 0.7 and c not in ['SL. NO.', 'NO.', 'PHONE', 'PHONE NUMBER']:
+            summary["column_profiles"][c] = {
+                "type": "numeric",
+                "sum": float(num_s.sum()),
+                "mean": float(num_s.mean()),
+                "min": float(num_s.min()),
+                "max": float(num_s.max())
+            }
+        else:
+            top_counts = clean_s.value_counts().head(5).to_dict()
+            summary["column_profiles"][c] = {
+                "type": "categorical",
+                "unique_count": int(clean_s.nunique()),
+                "top_5_frequencies": top_counts
+            }
+    return summary
+
 # =========================================================================
 # EXCEL GENERATOR 1: BASE DATA ONLY (.XLSX)
 # =========================================================================
@@ -617,7 +644,6 @@ def generate_smart_dashboard_excel_workbook(sheets_map, master_df):
     t_cell.alignment = Alignment(horizontal="left", vertical="center")
     ws_dash.row_dimensions[2].height = 36
     
-    # Identify dynamic categorical columns
     cat_candidates = [c for c in master_df.columns if c not in ['SL. NO.', 'EMPLOYEE NAME', 'PHONE', 'PHONE NUMBER', 'NO.']]
     cat1 = cat_candidates[0] if len(cat_candidates) > 0 else master_df.columns[0]
     cat2 = cat_candidates[1] if len(cat_candidates) > 1 else cat1
@@ -628,7 +654,7 @@ def generate_smart_dashboard_excel_workbook(sheets_map, master_df):
     clean_series2 = master_df[cat2].astype(str).str.strip().str.upper().replace("", pd.NA).dropna()
     top_val2 = clean_series2.mode().iloc[0] if not clean_series2.empty else "N/A"
     
-    # 3 Corporate KPI Cards (B4:D5, F4:H5, J4:L5)
+    # 3 Corporate KPI Cards
     ws_dash.merge_cells("B4:D4")
     ws_dash.merge_cells("B5:D5")
     ws_dash["B4"].value = "TOTAL RECORDS PARSED"
@@ -712,7 +738,6 @@ def generate_smart_dashboard_excel_workbook(sheets_map, master_df):
         bar.legend = None
         bar.gapWidth = 80
         
-        # Clean data labels: Numbers only
         bar.dataLabels = DataLabelList()
         bar.dataLabels.showVal = True
         bar.dataLabels.showCatName = False
@@ -764,7 +789,6 @@ def generate_smart_dashboard_excel_workbook(sheets_map, master_df):
         donut.title = f"Proportion of {cat2}"
         donut.holeSize = 55
         
-        # Clean data labels: Percentages only
         donut.dataLabels = DataLabelList()
         donut.dataLabels.showPercent = True
         donut.dataLabels.showVal = False
@@ -780,7 +804,6 @@ def generate_smart_dashboard_excel_workbook(sheets_map, master_df):
         donut.set_categories(cats_ref2)
         donut.height = 11
         donut.width = 15
-        # Placed beside the Bar Chart for a side-by-side executive layout
         ws_dash.add_chart(donut, "L8")
 
     for col in ws_dash.columns:
@@ -877,7 +900,7 @@ def generate_ai_copilot_excel_workbook(sheets_map, master_df, ai_spec):
     t_cell.alignment = Alignment(horizontal="left", vertical="center")
     ws_ai.row_dimensions[2].height = 36
     
-    # Custom KPIs
+    # Custom KPIs with live formula on Card 1
     kpis = ai_spec.get("kpi_cards", [])
     for idx, k in enumerate(kpis[:3]):
         c_start = 2 + idx * 4
@@ -889,7 +912,13 @@ def generate_ai_copilot_excel_workbook(sheets_map, master_df, ai_spec):
         ws_ai.merge_cells(f"{col_s_let}5:{col_e_let}5")
         ws_ai[f"{col_s_let}4"].value = str(k.get("label", "Metric")).upper()
         ws_ai[f"{col_s_let}4"].font = Font(name="Calibri", size=9, bold=True, color=TEXT_MUTED)
-        ws_ai[f"{col_s_let}5"].value = str(k.get("value", "-"))
+        
+        # Link card 1 directly to live formula
+        if idx == 0 and "TOTAL" in str(k.get("label", "")).upper():
+            ws_ai[f"{col_s_let}5"].value = f"=COUNTA('{data_sheet_name}'!B2:B{len(master_df)+1})"
+        else:
+            ws_ai[f"{col_s_let}5"].value = str(k.get("value", "-"))
+            
         ws_ai[f"{col_s_let}5"].font = Font(name="Calibri", size=18, bold=True, color="0284C7")
         
         for r in range(4, 6):
@@ -1064,38 +1093,41 @@ def execute_extraction_cascade(files_data, key_str):
 
     raise Exception(f"Extraction failed across models. Last Error: {last_err}")
 
-# AI Custom Dashboard Copilot Query Function
+# AI Custom Dashboard Copilot Query Function with True Statistical Context
 def ask_ai_for_dashboard_spec(df, user_instruction, key_str):
     genai.configure(api_key=key_str)
     
-    cols_info = list(df.columns)
-    sample_data = df.head(5).to_dict(orient="records")
+    metrics_context = profile_dataset_metrics(df)
     
     prompt = f"""
     You are an expert Data Visualizer and Business Intelligence Architect.
-    Given a dataset with these columns: {cols_info}
-    Sample records: {sample_data}
+    Here is the complete statistical profile of the dataset:
+    {json.dumps(metrics_context, indent=2)}
     
     The user requested this dashboard / visualization:
     "{user_instruction}"
     
-    Generate a clean JSON specification for the best charts and KPI metrics to display.
-    Return strictly JSON matching this structure:
+    IMPORTANT RULES:
+    1. Base all KPI metric cards on the true statistical profile (e.g. total_records is {metrics_context['total_records']}).
+    2. Suggest 1 or 2 high-impact charts selecting exact column names from: {list(df.columns)}.
+    3. Write accurate business insights summarizing the findings.
+    
+    Return strictly valid JSON matching this schema:
     {{
       "kpi_cards": [
-        {{"label": "Metric Name", "value": "Value or Stat", "subtitle": "Context or comparison"}}
+        {{"label": "Metric Name", "value": "Exact Calculated Stat", "subtitle": "Context or note"}}
       ],
       "charts": [
         {{
           "chart_type": "bar", // Choose from: "bar", "pie", "donut", "line", "treemap"
           "title": "Clean Chart Title",
-          "group_by_col": "Exact Column Name from dataframe",
-          "metric_col": null, // Exact numeric column name or null for count
-          "aggregation": "count", // Choose from: "count", "sum", "mean"
+          "group_by_col": "Exact Column Name",
+          "metric_col": null,
+          "aggregation": "count",
           "top_n": 8
         }}
       ],
-      "ai_insights": "2-3 lines explaining what the charts reveal."
+      "ai_insights": "2-3 lines explaining true insights based on data."
     }}
     """
     
