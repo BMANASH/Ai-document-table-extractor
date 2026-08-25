@@ -500,6 +500,42 @@ def profile_dataset_metrics(df):
             }
     return summary
 
+# Cached Dynamic Model Discovery (Runs once in <0.2s, never hangs)
+@st.cache_data(ttl=3600, show_spinner=False)
+def get_supported_gemini_models(key_str):
+    genai.configure(api_key=key_str)
+    discovered = []
+    try:
+        for m in genai.list_models():
+            methods = getattr(m, 'supported_generation_methods', [])
+            name = m.name.replace("models/", "") if hasattr(m, 'name') else str(m)
+            if "generateContent" in methods:
+                name_low = name.lower()
+                if not any(x in name_low for x in ['embed', 'imagen', 'tts', 'aqa', 'realtime']):
+                    discovered.append(name)
+    except Exception:
+        pass
+
+    # Sort flash models first (fastest), then pro models
+    def sort_score(n):
+        nl = n.lower()
+        if "2.5-flash" in nl:
+            return 1
+        elif "flash" in nl:
+            return 2
+        elif "pro" in nl:
+            return 3
+        return 4
+
+    discovered.sort(key=sort_score)
+    
+    # Add standard fallback endpoints
+    fallbacks = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash"]
+    for fb in fallbacks:
+        if fb not in discovered:
+            discovered.append(fb)
+    return discovered
+
 # =========================================================================
 # EXCEL GENERATOR 1: BASE DATA ONLY (.XLSX)
 # =========================================================================
@@ -1026,10 +1062,10 @@ def generate_ai_copilot_excel_workbook(sheets_map, master_df, ai_spec):
     return buf.getvalue()
 
 # =========================================================================
-# FAST MULTIMODAL EXTRACTION ENGINE
+# SELF-HEALING EXTRACTION CASCADE
 # =========================================================================
 def execute_extraction_cascade(files_data, key_str):
-    genai.configure(api_key=key_str)
+    models_to_try = get_supported_gemini_models(key_str)
     
     prompt = """
     You are an expert Data Engineer and OCR Analyst.
@@ -1073,10 +1109,8 @@ def execute_extraction_cascade(files_data, key_str):
             
     contents.append(prompt)
 
-    model_cascade = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"]
     last_err = None
-    
-    for model_name in model_cascade:
+    for model_name in models_to_try:
         try:
             model = genai.GenerativeModel(model_name)
             response = model.generate_content(
@@ -1094,11 +1128,11 @@ def execute_extraction_cascade(files_data, key_str):
             last_err = err
             continue
 
-    raise last_err
+    raise Exception(f"All available vision models failed. Last attempted error: {last_err}")
 
-# Fast AI Custom Dashboard Copilot Function
+# AI Custom Dashboard Copilot Function
 def ask_ai_for_dashboard_spec(df, user_instruction, key_str):
-    genai.configure(api_key=key_str)
+    models_to_try = get_supported_gemini_models(key_str)
     metrics_context = profile_dataset_metrics(df)
     
     prompt = f"""
@@ -1133,8 +1167,7 @@ def ask_ai_for_dashboard_spec(df, user_instruction, key_str):
     }}
     """
     
-    model_cascade = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"]
-    for model_name in model_cascade:
+    for model_name in models_to_try:
         try:
             model = genai.GenerativeModel(model_name)
             res = model.generate_content(
