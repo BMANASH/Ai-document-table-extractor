@@ -10,10 +10,12 @@ import google.generativeai as genai
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
+import plotly.express as px
+import plotly.graph_objects as go
 
 # Page Configuration
 st.set_page_config(
-    page_title="SheetGen AI | Document to Excel Converter",
+    page_title="SheetGen AI | Document to Excel & Dashboard",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -53,7 +55,7 @@ section[data-testid="stSidebar"] {
     pointer-events: none !important;
 }
 
-h1, h2, h3 {
+h1, h2, h3, h4 {
     font-family: 'Space Grotesk', sans-serif !important;
     letter-spacing: -0.02em;
     font-weight: 700;
@@ -200,98 +202,38 @@ div[data-testid="stFileUploader"] section button {
     transition: all 0.2s ease-in-out !important;
 }
 
-@keyframes pulseGlassGlow {
-    0% {
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 18px rgba(34, 197, 94, 0.2);
-        border-color: rgba(34, 197, 94, 0.35);
-    }
-    50% {
-        box-shadow: 0 14px 44px rgba(0, 0, 0, 0.75), 0 0 36px rgba(34, 197, 94, 0.6);
-        border-color: rgba(34, 197, 94, 0.9);
-    }
-    100% {
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 18px rgba(34, 197, 94, 0.2);
-        border-color: rgba(34, 197, 94, 0.35);
-    }
+/* Glassmorphism KPI Stat Card */
+.kpi-stat-card {
+    background: rgba(17, 24, 39, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 1.1rem 1.25rem;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3);
+    margin-bottom: 12px;
 }
-
-@keyframes spinRadarRing {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-@keyframes shimmerGlowText {
-    0% { background-position: -200% 0; }
-    100% { background-position: 200% 0; }
-}
-
-.glass-loading-card {
-    background: rgba(15, 23, 42, 0.85) !important;
-    backdrop-filter: blur(20px) !important;
-    -webkit-backdrop-filter: blur(20px) !important;
-    border: 1.5px solid rgba(34, 197, 94, 0.55) !important;
-    border-radius: 18px !important;
-    padding: 2rem 2.2rem !important;
-    margin: 1.5rem 0 !important;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    animation: pulseGlassGlow 2.5s infinite ease-in-out;
-}
-
-.spinner-radar-ring {
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    border: 3.5px solid rgba(255, 255, 255, 0.08);
-    border-top: 3.5px solid #22c55e;
-    border-right: 3.5px solid #38bdf8;
-    animation: spinRadarRing 1.1s linear infinite;
-    margin-bottom: 14px;
-}
-
-.glass-loading-title {
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: 1.4rem;
-    font-weight: 700;
-    background: linear-gradient(90deg, #ffffff 0%, #4ade80 50%, #ffffff 100%);
-    background-size: 200% auto;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    animation: shimmerGlowText 3s linear infinite;
-    margin-bottom: 8px;
-}
-
-.glass-loading-desc {
-    font-size: 0.92rem;
-    color: #94a3b8;
-    max-width: 540px;
-    line-height: 1.5;
-    margin-bottom: 16px;
-}
-
-.status-pills-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    justify-content: center;
-}
-
-.status-pill {
-    font-size: 0.78rem;
+.kpi-title {
+    font-size: 0.8rem;
     font-weight: 600;
-    background: rgba(34, 197, 94, 0.14);
-    color: #4ade80;
-    border: 1px solid rgba(34, 197, 94, 0.35);
-    padding: 5px 14px;
-    border-radius: 9999px;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #94a3b8;
+    margin-bottom: 4px;
+}
+.kpi-value {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: #ffffff;
+    line-height: 1.1;
+}
+.kpi-subtitle {
+    font-size: 0.75rem;
+    color: #38bdf8;
+    margin-top: 4px;
 }
 
+/* ENLARGED & PERMANENTLY VISIBLE DATA EDITOR ACTION TOOLBAR */
 [data-testid="stElementToolbar"] {
     opacity: 1 !important;
     visibility: visible !important;
@@ -332,6 +274,7 @@ div[data-testid="stFileUploader"] section button {
     fill: currentColor !important;
 }
 
+/* Master Download Button Styling (Pure Excel Emerald Green) */
 .stDownloadButton > button {
     background: linear-gradient(135deg, #107C41 0%, #15803d 100%) !important;
     color: #ffffff !important;
@@ -374,7 +317,7 @@ EXCEL_ICON_SIDEBAR = '<svg width="28" height="28" viewBox="0 0 48 48" fill="none
 # Static Sidebar Configuration
 with st.sidebar:
     st.markdown(f'<div style="display:flex; align-items:center; gap:10px; margin-bottom: 6px;">{EXCEL_ICON_SIDEBAR}<span style="font-size:1.35rem; font-weight:700; color:#ffffff; font-family:\'Space Grotesk\',sans-serif;">SheetGen AI</span></div>', unsafe_allow_html=True)
-    st.caption("Universal Tabular Data Extraction Engine")
+    st.caption("Universal Tabular Extraction & AI Dashboard Suite")
     st.markdown("<hr style='border:none; border-top:1px solid rgba(255,255,255,0.08); margin:12px 0;'>", unsafe_allow_html=True)
     
     st.markdown("<div style='font-size:0.8rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:#94a3b8; margin-bottom:10px;'>Core Capabilities</div>", unsafe_allow_html=True)
@@ -382,10 +325,10 @@ with st.sidebar:
     sidebar_items_html = (
         '<div class="sidebar-item"><div class="sidebar-title">⚡ Universal OCR Vision</div>'
         '<div class="sidebar-desc">Extracts tables from invoices, registers, ledgers, and receipts.</div></div>'
-        '<div class="sidebar-item"><div class="sidebar-title">🗃️ Multi-Table Isolation</div>'
-        '<div class="sidebar-desc">Guaranteed distinct tabs for each uploaded page/table.</div></div>'
-        '<div class="sidebar-item"><div class="sidebar-title">🧹 Auto-Sanitization & Styling</div>'
-        '<div class="sidebar-desc">Removes artifacts, auto-fits columns & formats Excel sheets.</div></div>'
+        '<div class="sidebar-item"><div class="sidebar-title">📊 Executive Dashboard Engine</div>'
+        '<div class="sidebar-desc">Instant KPI metrics and interactive dark-glass visual charts.</div></div>'
+        '<div class="sidebar-item"><div class="sidebar-title">💬 Talk with AI (Copilot)</div>'
+        '<div class="sidebar-desc">Describe any custom visual chart and see it render instantly.</div></div>'
         '<div class="sidebar-item"><div class="sidebar-title">✏️ Visual In-Browser Grid</div>'
         '<div class="sidebar-desc">Enlarged toolbar to add rows, search, hide columns & edit data.</div></div>'
         '<div class="sidebar-item"><div class="sidebar-title">📥 Native .xlsx Generator</div>'
@@ -396,15 +339,15 @@ with st.sidebar:
     st.markdown("🟢 **System Status:** Ready")
 
 # Hero Header
-st.markdown('<div class="status-badge">⚡ Instant Document to Spreadsheet</div>', unsafe_allow_html=True)
+st.markdown('<div class="status-badge">⚡ Instant Document to Spreadsheet & Dashboard</div>', unsafe_allow_html=True)
 main_header_html = f'<div class="header-wrapper">{EXCEL_ICON_MAIN}<div class="excel-title-text">SheetGen AI</div></div>'
 st.markdown(main_header_html, unsafe_allow_html=True)
-st.markdown('<div class="sub-heading">Upload single or batch images & PDFs → Automatically convert them to clean, editable Excel workbooks.</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-heading">Upload single or batch images & PDFs → Convert to styled Excel workbooks & interactive AI visual dashboards.</div>', unsafe_allow_html=True)
 
 # 3 Step Visual Workflow Guide Header
-st.markdown('<div class="steps-title">📋 Steps to Convert & Download Your Excel Sheet</div>', unsafe_allow_html=True)
+st.markdown('<div class="steps-title">📋 Steps to Convert, Visualize & Download</div>', unsafe_allow_html=True)
 
-# 3 Floating Motion Feature Cards (Informational Steps)
+# 3 Floating Motion Feature Cards
 col_card1, col_card2, col_card3 = st.columns(3)
 with col_card1:
     card1_html = (
@@ -418,8 +361,8 @@ with col_card1:
 with col_card2:
     card2_html = (
         '<div class="feature-card card-anim-2">'
-        '<div style="font-size: 1.15rem; font-weight:700; color:#38bdf8; margin-bottom:4px;">2. AI Formats & Cleans</div>'
-        '<div style="font-size:0.85rem; color:#94a3b8; line-height:1.4;">Extracts rows, columns, and transcribes values rapidly.</div>'
+        '<div style="font-size: 1.15rem; font-weight:700; color:#38bdf8; margin-bottom:4px;">2. AI Extracts & Cleans</div>'
+        '<div style="font-size:0.85rem; color:#94a3b8; line-height:1.4;">Extracts rows, columns, and generates interactive dashboards.</div>'
         '</div>'
     )
     st.markdown(card2_html, unsafe_allow_html=True)
@@ -427,8 +370,8 @@ with col_card2:
 with col_card3:
     card3_html = (
         '<div class="feature-card card-anim-3">'
-        '<div style="font-size: 1.15rem; font-weight:700; color:#a78bfa; margin-bottom:4px;">3. Edit & Download Excel</div>'
-        '<div style="font-size:0.85rem; color:#94a3b8; line-height:1.4;">Customize displayed tables and download the final styled .xlsx workbook.</div>'
+        '<div style="font-size: 1.15rem; font-weight:700; color:#a78bfa; margin-bottom:4px;">3. Talk with AI & Download</div>'
+        '<div style="font-size:0.85rem; color:#94a3b8; line-height:1.4;">Create custom charts on demand and download the styled .xlsx.</div>'
         '</div>'
     )
     st.markdown(card3_html, unsafe_allow_html=True)
@@ -448,16 +391,15 @@ def prepare_image(raw_bytes):
     out.seek(0)
     return Image.open(out)
 
-# Universal Column Normalization (Harmonizes serial numbers while preserving arbitrary custom headers)
+# Universal Column Normalization
 def normalize_column_header(col_name):
     c = str(col_name).strip()
     c_clean = re.sub(r'[^\w\s]', '', c).lower()
-    
     if c_clean in ['no', 'sr no', 'srno', 'sl no', 'slno', 's no', 'sno', 'serial no', 'serial number']:
         return 'SL. NO.'
     return c.upper()
 
-# Enterprise OpenPyXL Workbook Builder with Strict Universal Formats
+# Enterprise OpenPyXL Workbook Builder
 def generate_styled_excel_workbook(sheets_map):
     wb = openpyxl.Workbook()
     wb.remove(wb.active)
@@ -499,7 +441,6 @@ def generate_styled_excel_workbook(sheets_map):
                 cell.font = regular_font
                 cell.border = thin_border
                 
-                # Center serial numbers; left align text
                 if (val_clean.isdigit() and len(val_clean) < 5) or headers[col_idx-1] == 'SL. NO.':
                     cell.alignment = Alignment(horizontal="center", vertical="center")
                 else:
@@ -530,16 +471,16 @@ def execute_extraction_cascade(files_data, key_str):
     Extract all tabular information from the uploaded file(s) with high fidelity and precision:
 
     1. TABLE EXTRACTION (Domain Agnostic):
-       - Accurately identify all distinct tables across all uploaded pages and files (e.g., invoices, ledgers, registers, bills, spreadsheets).
+       - Accurately identify all distinct tables across all uploaded pages and files (invoices, ledgers, registers, bills, spreadsheets).
        - Accurately preserve and transcribe the authentic column headers present in the document.
        - Clean values: If a cell is blank or unreadable, return an empty string "". Do NOT write literal "None" or "NaN".
-       - Assign an intuitive, descriptive title for each table/sheet (e.g. "Invoice Breakdown", "Page 1 - Ledger", "Attendance Roster").
+       - Assign an intuitive title for each table/sheet (e.g. "Invoice Breakdown", "Page 1 - Ledger", "Attendance Roster").
 
     2. EXECUTIVE SUMMARY:
        - Provide a concise, structured business summary of the extracted data in Markdown format:
          * 📌 **Document Type & Scope**: What type of document this is.
          * 📊 **Key Metrics & Statistics**: Total record count, key numeric totals or categories.
-         * 🔍 **Observations**: Any noteworthy trends, missing fields, or exceptions.
+         * 🔍 **Observations**: Noteworthy trends, missing fields, or exceptions.
 
     Return output strictly as valid JSON matching this schema:
     {
@@ -549,8 +490,7 @@ def execute_extraction_cascade(files_data, key_str):
           "table_name": "Table Name",
           "headers": ["Header 1", "Header 2", "Header 3"],
           "rows": [
-            ["Row1 Col1", "Row1 Col2", "Row1 Col3"],
-            ["Row2 Col1", "Row2 Col2", "Row2 Col3"]
+            ["Row1 Col1", "Row1 Col2", "Row1 Col3"]
           ]
         }
       ]
@@ -590,6 +530,136 @@ def execute_extraction_cascade(files_data, key_str):
             continue
 
     raise Exception(f"Extraction failed across models. Last Error: {last_err}")
+
+# AI Custom Dashboard Generator (Natural Language Copilot)
+def ask_ai_for_dashboard_spec(df, user_instruction, key_str):
+    genai.configure(api_key=key_str)
+    
+    cols_info = list(df.columns)
+    sample_data = df.head(5).to_dict(orient="records")
+    
+    prompt = f"""
+    You are an expert Data Visualizer and Business Intelligence Architect.
+    Given a dataset with these columns: {cols_info}
+    Sample records: {sample_data}
+    
+    The user requested this dashboard / visualization:
+    "{user_instruction}"
+    
+    Generate a clean JSON specification for the best charts and KPI metrics to display.
+    Return strictly JSON matching this structure:
+    {{
+      "kpi_cards": [
+        {{"label": "Metric Name", "value": "Value or Stat", "subtitle": "Context or comparison"}}
+      ],
+      "charts": [
+        {{
+          "chart_type": "bar", // Choose from: "bar", "pie", "donut", "line", "treemap"
+          "title": "Clean Chart Title",
+          "group_by_col": "Exact Column Name from dataframe",
+          "metric_col": null, // Exact numeric column name or null for count
+          "aggregation": "count", // Choose from: "count", "sum", "mean"
+          "top_n": 10
+        }}
+      ],
+      "ai_insights": "2-3 lines explaining what the charts reveal."
+    }}
+    """
+    
+    model_cascade = ["gemini-3.6-flash", "gemini-2.5-flash", "gemini-2.0-flash"]
+    for m in model_cascade:
+        try:
+            model = genai.GenerativeModel(m)
+            res = model.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
+            if res and res.text:
+                t = res.text.strip()
+                if "```json" in t:
+                    t = t.split("```json")[1].split("```")[0].strip()
+                elif "```" in t:
+                    t = t.split("```")[1].split("```")[0].strip()
+                return json.loads(t)
+        except Exception:
+            continue
+    return None
+
+# Render Dynamic Plotly Chart in Dark Glass Theme
+def render_plotly_chart(df, chart_spec):
+    chart_type = chart_spec.get("chart_type", "bar").lower()
+    title = chart_spec.get("title", "Chart")
+    group_col = chart_spec.get("group_by_col")
+    metric_col = chart_spec.get("metric_col")
+    agg = chart_spec.get("aggregation", "count").lower()
+    top_n = chart_spec.get("top_n", 10)
+    
+    if group_col not in df.columns:
+        text_cols = [c for c in df.columns if c not in ['SL. NO.', 'NO.']]
+        group_col = text_cols[0] if text_cols else df.columns[0]
+        
+    plot_df = df[df[group_col].astype(str).str.strip() != ""].copy()
+    
+    if metric_col and metric_col in plot_df.columns:
+        plot_df[metric_col] = pd.to_numeric(plot_df[metric_col].astype(str).str.replace(r'[^\d.]', '', regex=True), errors='coerce').fillna(0)
+        if agg == "sum":
+            agg_df = plot_df.groupby(group_col)[metric_col].sum().reset_index()
+        elif agg == "mean":
+            agg_df = plot_df.groupby(group_col)[metric_col].mean().reset_index()
+        else:
+            agg_df = plot_df.groupby(group_col)[metric_col].count().reset_index()
+        val_col = metric_col
+    else:
+        agg_df = plot_df[group_col].value_counts().reset_index()
+        agg_df.columns = [group_col, 'Count']
+        val_col = 'Count'
+        
+    agg_df = agg_df.sort_values(by=val_col, ascending=False).head(top_n)
+    color_palette = ['#22c55e', '#38bdf8', '#a78bfa', '#fbbf24', '#f43f5e', '#34d399', '#60a5fa', '#c084fc']
+    
+    if chart_type in ["pie", "donut"]:
+        hole_val = 0.55 if chart_type == "donut" else 0.0
+        fig = px.pie(
+            agg_df, 
+            names=group_col, 
+            values=val_col, 
+            hole=hole_val,
+            color_discrete_sequence=color_palette
+        )
+    elif chart_type == "line":
+        fig = px.line(
+            agg_df, 
+            x=group_col, 
+            y=val_col, 
+            markers=True,
+            color_discrete_sequence=['#38bdf8']
+        )
+    elif chart_type == "treemap":
+        fig = px.treemap(
+            agg_df, 
+            path=[group_col], 
+            values=val_col,
+            color_discrete_sequence=color_palette
+        )
+    else:
+        fig = px.bar(
+            agg_df, 
+            x=group_col, 
+            y=val_col, 
+            text=val_col,
+            color=group_col,
+            color_discrete_sequence=color_palette
+        )
+        fig.update_traces(textposition='outside')
+        
+    fig.update_layout(
+        title=dict(text=title, font=dict(family='Space Grotesk', size=16, color='#ffffff')),
+        paper_bgcolor='rgba(17, 24, 39, 0.75)',
+        plot_bgcolor='rgba(17, 24, 39, 0)',
+        font=dict(color='#e2e8f0', family='Plus Jakarta Sans'),
+        showlegend=(chart_type in ["pie", "donut"]),
+        margin=dict(l=20, r=20, t=50, b=30),
+        xaxis=dict(showgrid=False, color='#94a3b8'),
+        yaxis=dict(gridcolor='rgba(255, 255, 255, 0.08)', color='#94a3b8')
+    )
+    return fig
 
 # Pop-up Document Lightbox Modal
 @st.dialog("📄 Document Preview", width="large")
@@ -636,8 +706,8 @@ if uploaded_files:
                         show_preview_modal(file.name, files_data[idx][0], file.type)
                 
         with col_action:
-            st.subheader("⚡ Convert to Excel")
-            st.caption(f"Extract and compile all {len(uploaded_files)} file(s) into a unified multi-sheet Excel spreadsheet.")
+            st.subheader("⚡ Convert to Excel & Dashboard")
+            st.caption(f"Extract and compile all {len(uploaded_files)} file(s) into a unified Excel spreadsheet and visual analytics dashboard.")
             
             extract_clicked = st.button("🚀 Extract Tables & Convert to Excel", type="primary", use_container_width=True)
             loader_container = st.empty()
@@ -648,7 +718,7 @@ if uploaded_files:
                     <div class="spinner-radar-ring"></div>
                     <div class="glass-loading-title">AI Vision Processing & Formatting</div>
                     <div class="glass-loading-desc">
-                        Analyzing visual matrix, isolating distinct tabular rows, sanitizing values & structuring your multi-sheet Excel workbook.
+                        Analyzing visual matrix, isolating tabular rows, sanitizing values & building visual dashboard metrics.
                     </div>
                     <div class="status-pills-row">
                         <span class="status-pill">🔍 OCR Matrix Scan</span>
@@ -671,7 +741,7 @@ if uploaded_files:
                     loader_container.empty()
                     st.error(f"Processing Error: {e}")
 
-# Results Display & Editable Table Grid
+# Results Display, Editable Table Grid & AI Dashboard Suite
 if "extracted_data" in st.session_state:
     data = st.session_state["extracted_data"]
     
@@ -702,7 +772,6 @@ if "extracted_data" in st.session_state:
                 
             df = pd.DataFrame(cleaned_rows, columns=headers if headers else None)
             df.fillna("", inplace=True)
-            
             df = df.rename(columns={c: normalize_column_header(c) for c in df.columns})
             
             badge_html = f'''
@@ -722,22 +791,162 @@ if "extracted_data" in st.session_state:
             )
             normalized_dfs[table_name] = edited_df
 
-        # Generate Unified Multi-Sheet Excel Map with Master Consolidated Records
-        sheets_for_workbook = {}
+        # Consolidated Master Dataframe for Dashboards
         if len(normalized_dfs) > 1:
             try:
-                # Merge into Master Combined Records
-                combined_df = pd.concat(list(normalized_dfs.values()), ignore_index=True)
-                combined_df.dropna(how='all', inplace=True)
-                combined_df.fillna("", inplace=True)
-                
-                # Continuous sequential serial numbers 1..N
-                if 'SL. NO.' in combined_df.columns:
-                    combined_df['SL. NO.'] = [str(i) for i in range(1, len(combined_df) + 1)]
-                    
-                sheets_for_workbook["Master Combined Records"] = combined_df
+                master_df = pd.concat(list(normalized_dfs.values()), ignore_index=True)
+                master_df.dropna(how='all', inplace=True)
+                master_df.fillna("", inplace=True)
+                if 'SL. NO.' in master_df.columns:
+                    master_df['SL. NO.'] = [str(i) for i in range(1, len(master_df) + 1)]
             except Exception:
-                pass
+                master_df = list(normalized_dfs.values())[0]
+        else:
+            master_df = list(normalized_dfs.values())[0]
+
+        # =========================================================================
+        # 📊 AI VISUAL ANALYTICS & DASHBOARD SUITE
+        # =========================================================================
+        st.markdown("---")
+        st.markdown("""
+        <div style="display:flex; align-items:center; gap:12px; margin-top:1.5rem; margin-bottom:0.5rem;">
+            <span style="font-size:1.65rem; font-weight:800; color:#ffffff; font-family:'Space Grotesk', sans-serif;">📈 AI Visual Analytics & Dashboard Suite</span>
+            <span style="font-size:0.8rem; font-weight:600; background:rgba(56,189,248,0.15); color:#38bdf8; border:1px solid rgba(56,189,248,0.3); padding:3px 12px; border-radius:9999px;">Interactive BI</span>
+        </div>
+        """, unsafe_allow_html=True)
+        st.caption("View instant smart analytics or talk with the AI Copilot to generate any custom visualization dynamically.")
+
+        tab_auto, tab_copilot = st.tabs(["⚡ Instant Smart Dashboard", "💬 Talk with AI (Custom Charts Copilot)"])
+
+        # TAB 1: INSTANT SMART DASHBOARD
+        with tab_auto:
+            kpi_col1, kpi_col2, kpi_col3 = st.columns(3)
+            
+            with kpi_col1:
+                st.markdown(f"""
+                <div class="kpi-stat-card">
+                    <div class="kpi-title">Total Records Parsed</div>
+                    <div class="kpi-value">{len(master_df)}</div>
+                    <div class="kpi-subtitle">Across {len(normalized_dfs)} sheet(s)</div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+            with kpi_col2:
+                candidate_cols = [c for c in master_df.columns if c not in ['SL. NO.', 'EMPLOYEE NAME', 'PHONE', 'PHONE NUMBER', 'NO.']]
+                cat_col = candidate_cols[0] if candidate_cols else master_df.columns[-1]
+                unique_cnt = master_df[cat_col].replace("", pd.NA).dropna().nunique()
+                st.markdown(f"""
+                <div class="kpi-stat-card">
+                    <div class="kpi-title">Unique {cat_col[:15]}</div>
+                    <div class="kpi-value">{unique_cnt}</div>
+                    <div class="kpi-subtitle">Distinct classifications</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            with kpi_col3:
+                sec_cat_col = candidate_cols[1] if len(candidate_cols) > 1 else cat_col
+                top_val = master_df[sec_cat_col].replace("", pd.NA).dropna().mode()
+                top_name = top_val.iloc[0] if not top_val.empty else "N/A"
+                st.markdown(f"""
+                <div class="kpi-stat-card">
+                    <div class="kpi-title">Dominant {sec_cat_col[:14]}</div>
+                    <div class="kpi-value" style="font-size:1.35rem;">{str(top_name)[:18]}</div>
+                    <div class="kpi-subtitle">Highest frequency category</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            # Auto-Generated High-Impact Charts
+            c_chart1, c_chart2 = st.columns(2)
+            with c_chart1:
+                spec1 = {
+                    "chart_type": "bar",
+                    "title": f"Distribution by {cat_col}",
+                    "group_by_col": cat_col,
+                    "aggregation": "count",
+                    "top_n": 8
+                }
+                fig1 = render_plotly_chart(master_df, spec1)
+                st.plotly_chart(fig1, use_container_width=True)
+
+            with c_chart2:
+                spec2 = {
+                    "chart_type": "donut",
+                    "title": f"Proportion of {sec_cat_col}",
+                    "group_by_col": sec_cat_col,
+                    "aggregation": "count",
+                    "top_n": 6
+                }
+                fig2 = render_plotly_chart(master_df, spec2)
+                st.plotly_chart(fig2, use_container_width=True)
+
+        # TAB 2: TALK WITH AI (CUSTOM CHART COPILOT)
+        with tab_copilot:
+            st.markdown("#### 💬 Ask AI to Build Any Custom Visual Chart")
+            st.caption("Tell the AI what you want to visualize (e.g., *'Create a breakdown of records by State'*, *'Show me a bar chart comparing managers'*, or *'Plot a pie chart of status remarks'*).")
+            
+            user_chart_prompt = st.text_input(
+                "Describe the chart or metrics you want to build:",
+                placeholder="e.g. Create a donut chart for states and compare headcount by reporting manager...",
+                key="user_chart_prompt_input"
+            )
+            
+            st.markdown("<div style='font-size:0.75rem; color:#94a3b8; margin-bottom:6px;'>💡 Quick Ideas (Click to populate):</div>", unsafe_allow_html=True)
+            col_q1, col_q2, col_q3 = st.columns(3)
+            with col_q1:
+                if st.button("📊 Breakdown by Category / Region", use_container_width=True):
+                    user_chart_prompt = "Generate a bar chart showing distribution across primary categories or regions."
+            with col_q2:
+                if st.button("🍩 Top 5 Contributors (Donut Chart)", use_container_width=True):
+                    user_chart_prompt = "Show a donut chart of top 5 groups or contributors with highest representation."
+            with col_q3:
+                if st.button("🔍 Exception & Remarks Audit", use_container_width=True):
+                    user_chart_prompt = "Analyze remarks or status flags and display a visual breakdown of exceptions."
+
+            if st.button("✨ Generate Custom Visual Dashboard", type="primary", use_container_width=True):
+                if not user_chart_prompt:
+                    st.warning("Please enter a description or pick a quick idea above.")
+                else:
+                    with st.spinner("AI Copilot is structuring your custom visualization..."):
+                        ai_spec = ask_ai_for_dashboard_spec(master_df, user_chart_prompt, api_key)
+                        if not ai_spec:
+                            st.error("Could not generate chart spec. Please try rephrasing your request.")
+                        else:
+                            st.session_state["custom_ai_spec"] = ai_spec
+
+            if "custom_ai_spec" in st.session_state:
+                ai_spec = st.session_state["custom_ai_spec"]
+                st.markdown("<br>", unsafe_allow_html=True)
+                st.markdown("##### 🎯 Custom AI Dashboard Result")
+                
+                kpis = ai_spec.get("kpi_cards", [])
+                if kpis:
+                    kpi_cols = st.columns(min(len(kpis), 3))
+                    for i, kpi in enumerate(kpis[:3]):
+                        with kpi_cols[i]:
+                            st.markdown(f"""
+                            <div class="kpi-stat-card">
+                                <div class="kpi-title">{kpi.get('label', 'Metric')}</div>
+                                <div class="kpi-value" style="font-size:1.5rem;">{kpi.get('value', '-')}</div>
+                                <div class="kpi-subtitle">{kpi.get('subtitle', '')}</div>
+                            </div>
+                            """, unsafe_allow_html=True)
+
+                charts = ai_spec.get("charts", [])
+                if charts:
+                    c_cols = st.columns(len(charts)) if len(charts) == 2 else [st.container()] * len(charts)
+                    for i, c_spec in enumerate(charts):
+                        target_col = c_cols[i] if len(charts) == 2 else c_cols[i]
+                        with target_col:
+                            fig = render_plotly_chart(master_df, c_spec)
+                            st.plotly_chart(fig, use_container_width=True)
+                            
+                if ai_spec.get("ai_insights"):
+                    st.info(f"💡 **AI Copilot Insight:** {ai_spec.get('ai_insights')}")
+
+        # Multi-Tab Styled Excel Workbook Generator (Single Master Output)
+        sheets_for_workbook = {}
+        if len(normalized_dfs) > 1:
+            sheets_for_workbook["Master Combined Records"] = master_df
 
         for name, df in normalized_dfs.items():
             clean_name = "".join(c for c in name if c.isalnum() or c in (' ', '_', '-')).strip()
