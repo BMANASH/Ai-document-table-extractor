@@ -1026,7 +1026,7 @@ def generate_ai_copilot_excel_workbook(sheets_map, master_df, ai_spec):
     return buf.getvalue()
 
 # =========================================================================
-# FAST MULTIMODAL EXTRACTION ENGINE WITH AUTOMATED RETRY BACKOFF
+# FAST MULTIMODAL EXTRACTION ENGINE
 # =========================================================================
 def execute_extraction_cascade(files_data, key_str):
     genai.configure(api_key=key_str)
@@ -1077,29 +1077,26 @@ def execute_extraction_cascade(files_data, key_str):
     last_err = None
     
     for model_name in model_cascade:
-        for attempt in range(2):
-            try:
-                model = genai.GenerativeModel(model_name)
-                response = model.generate_content(
-                    contents,
-                    generation_config={"response_mime_type": "application/json"},
-                    request_options={"timeout": 25}
-                )
-                if response and response.text:
-                    raw_text = response.text.strip()
-                    if "```json" in raw_text:
-                        raw_text = raw_text.split("```json")[1].split("```")[0].strip()
-                    elif "```" in raw_text:
-                        raw_text = raw_text.split("```")[1].split("```")[0].strip()
-                    return raw_text, model_name
-            except Exception as err:
-                last_err = err
-                time.sleep(1.5)
-                continue
+        try:
+            model = genai.GenerativeModel(model_name)
+            response = model.generate_content(
+                contents,
+                generation_config={"response_mime_type": "application/json"}
+            )
+            if response and response.text:
+                raw_text = response.text.strip()
+                if "```json" in raw_text:
+                    raw_text = raw_text.split("```json")[1].split("```")[0].strip()
+                elif "```" in raw_text:
+                    raw_text = raw_text.split("```")[1].split("```")[0].strip()
+                return raw_text, model_name
+        except Exception as err:
+            last_err = err
+            continue
 
-    raise Exception(f"HIGH_TRAFFIC_ALERT: {last_err}")
+    raise last_err
 
-# Fast AI Custom Dashboard Copilot Function with Backoff
+# Fast AI Custom Dashboard Copilot Function
 def ask_ai_for_dashboard_spec(df, user_instruction, key_str):
     genai.configure(api_key=key_str)
     metrics_context = profile_dataset_metrics(df)
@@ -1142,8 +1139,7 @@ def ask_ai_for_dashboard_spec(df, user_instruction, key_str):
             model = genai.GenerativeModel(model_name)
             res = model.generate_content(
                 prompt, 
-                generation_config={"response_mime_type": "application/json"},
-                request_options={"timeout": 15}
+                generation_config={"response_mime_type": "application/json"}
             )
             if res and res.text:
                 t = res.text.strip()
@@ -1314,11 +1310,7 @@ if uploaded_files:
                     st.toast(f"Extracted successfully via {used_model}!", icon="⚡")
                 except Exception as e:
                     loader_container.empty()
-                    err_msg = str(e)
-                    if "HIGH_TRAFFIC_ALERT" in err_msg or "429" in err_msg or "503" in err_msg or "ResourceExhausted" in err_msg:
-                        st.warning("⚠️ **High Traffic Alert:** The AI processing servers are temporarily experiencing high demand or rate limits. Please wait 10–15 seconds and click **'🚀 Extract Tables & Convert to Excel'** again.")
-                    else:
-                        st.error(f"Processing Error: {err_msg}")
+                    st.error(f"Processing Error: {str(e)}")
 
 # =========================================================================
 # MAIN RESULTS & 3-MODE WORKSPACE
@@ -1500,7 +1492,7 @@ if "extracted_data" in st.session_state:
                         st.session_state["custom_ai_spec"] = ai_spec
                         st.session_state["active_chart_prompt"] = query_text
                     else:
-                        st.warning("⚠️ Could not generate chart specification due to server load. Please try again in a few seconds.")
+                        st.warning("⚠️ Could not generate chart specification. Please try again.")
 
             # Pre-Built Quick Question Action Chips
             st.markdown("<div style='font-size:0.8rem; font-weight:700; color:#38bdf8; margin-bottom:6px;'>💡 Pre-Built Quick Questions (Click to auto-generate):</div>", unsafe_allow_html=True)
