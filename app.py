@@ -9,42 +9,39 @@ from google.genai import types
 
 # Page Config
 st.set_page_config(
-    page_title="DataLens AI | Enterprise Document Intelligence",
-    page_icon="⚡",
+    page_title="SheetGen AI | Document to Excel Converter",
+    page_icon="📗",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Enterprise Dark Tech CSS Scaffolding
+# Modern Dark Theme & Clean Font Styling
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;500&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap');
 
-    /* Global Theme Overrides */
     .stApp {
         background: radial-gradient(circle at 50% 0%, #111827 0%, #080b11 75%, #05070a 100%) !important;
         color: #e2e8f0;
         font-family: 'Plus Jakarta Sans', sans-serif;
     }
 
-    /* Typography */
     h1, h2, h3 {
         font-family: 'Space Grotesk', sans-serif !important;
         letter-spacing: -0.02em;
         font-weight: 700;
     }
     
-    .gradient-title {
-        background: linear-gradient(135deg, #60a5fa 0%, #a855f7 50%, #ec4899 100%);
+    .excel-title {
+        background: linear-gradient(135deg, #22c55e 0%, #10b981 50%, #38bdf8 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-        font-size: 2.75rem !important;
+        font-size: 2.6rem !important;
         font-weight: 800 !important;
         line-height: 1.15;
         margin-bottom: 0.25rem;
     }
 
-    /* Subheadings */
     .sub-heading {
         color: #94a3b8;
         font-size: 1.05rem;
@@ -52,22 +49,15 @@ st.markdown("""
         margin-bottom: 1.5rem;
     }
 
-    /* Glassmorphism Feature Cards */
-    .glass-card {
+    .feature-card {
         background: rgba(17, 24, 39, 0.7);
         border: 1px solid rgba(255, 255, 255, 0.08);
         border-radius: 14px;
         padding: 1.25rem;
         backdrop-filter: blur(12px);
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
-        transition: transform 0.2s ease, border-color 0.2s ease;
-    }
-    .glass-card:hover {
-        border-color: rgba(96, 165, 250, 0.35);
-        transform: translateY(-2px);
     }
 
-    /* Badge Tags */
     .status-badge {
         display: inline-flex;
         align-items: center;
@@ -76,113 +66,88 @@ st.markdown("""
         border-radius: 9999px;
         font-size: 0.75rem;
         font-weight: 600;
-        letter-spacing: 0.03em;
-        text-transform: uppercase;
-        background: rgba(59, 130, 246, 0.12);
-        color: #60a5fa;
-        border: 1px solid rgba(59, 130, 246, 0.3);
+        background: rgba(34, 197, 94, 0.12);
+        color: #4ade80;
+        border: 1px solid rgba(34, 197, 94, 0.3);
         margin-bottom: 1rem;
     }
 
-    /* Sidebar Customization */
     section[data-testid="stSidebar"] {
         background-color: #0b0f19 !important;
         border-right: 1px solid rgba(255, 255, 255, 0.06);
     }
 
-    /* Primary Action Buttons */
     .stButton > button[kind="primary"] {
-        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+        background: linear-gradient(135deg, #16a34a 0%, #15803d 100%) !important;
         color: #ffffff !important;
         font-weight: 600 !important;
         border: none !important;
         border-radius: 10px !important;
         padding: 0.65rem 1.75rem !important;
-        font-size: 0.95rem !important;
-        box-shadow: 0 0 20px rgba(37, 99, 235, 0.45) !important;
-        transition: all 0.25s ease-in-out !important;
+        box-shadow: 0 0 20px rgba(22, 163, 74, 0.4) !important;
     }
-    .stButton > button[kind="primary"]:hover {
-        transform: translateY(-1px) !important;
-        box-shadow: 0 0 28px rgba(37, 99, 235, 0.7) !important;
-    }
-
-    /* File Uploader Container */
+    
     div[data-testid="stFileUploader"] {
         background: rgba(17, 24, 39, 0.5) !important;
         border: 1px dashed rgba(255, 255, 255, 0.15) !important;
         border-radius: 14px !important;
         padding: 1.5rem !important;
-        transition: border-color 0.2s ease;
-    }
-    div[data-testid="stFileUploader"]:hover {
-        border-color: #60a5fa !important;
-    }
-
-    /* Code & Metrics Blocks */
-    code {
-        font-family: 'JetBrains Mono', monospace !important;
-        background: rgba(255, 255, 255, 0.06) !important;
-        color: #38bdf8 !important;
-        border-radius: 4px !important;
-        padding: 2px 6px !important;
     }
 </style>
 """, unsafe_allow_html=True)
 
+# Detect API Key from Secrets or Manual Entry
+api_key = ""
+if "GEMINI_API_KEY" in st.secrets:
+    api_key = st.secrets["GEMINI_API_KEY"]
+elif os.environ.get("GEMINI_API_KEY"):
+    api_key = os.environ.get("GEMINI_API_KEY")
+
 # Sidebar Configuration
 with st.sidebar:
-    st.markdown("### ⚡ Neural Core Config")
+    st.markdown("### ⚙️ App Settings")
     
-    # Check if API Key is configured via Streamlit Secrets
-    default_key = os.environ.get("GEMINI_API_KEY", "")
-    if not default_key and "GEMINI_API_KEY" in st.secrets:
-        default_key = st.secrets["GEMINI_API_KEY"]
-
-    if default_key:
-        api_key = default_key
-        st.success("🔒 System API Key Active", icon="✅")
+    if api_key:
+        st.success("✅ AI Engine Connected", icon="🔒")
     else:
-        api_key = st.text_input("Gemini API Key", type="password", placeholder="Enter AI Studio Key...", help="Obtain a free API key at aistudio.google.com")
-        if not api_key:
-            st.caption("💡 Enter your key above to enable vision synthesis.")
+        api_key = st.text_input("Gemini API Key", type="password", placeholder="Paste API Key here...", help="Enter your free key from aistudio.google.com")
 
     st.markdown("---")
     st.markdown("""
-    **Core Capabilities:**
-    * 📑 **Multi-Page Vector Parsing:** Ingests long corporate statements & PDFs.
-    * 🗃️ **Multi-Table Detection:** Isolates distinct tables into separate tabs.
-    * 🧹 **Automated Sanitization:** Cleans currencies, footnotes, and whitespace.
-    * 📊 **Live Editable Grid:** Modify numbers in-browser before export.
-    * 📥 **Native Excel Generator:** Download `.xlsx` with formula-ready floats.
+    **What this app does:**
+    * 📑 **Reads PDFs & Images:** Scans reports, invoices, and receipts.
+    * 🗃️ **Finds Multiple Tables:** Separates different tables cleanly.
+    * 🧹 **Cleans Up Numbers:** Removes symbols so formulas work.
+    * ✏️ **Lets You Edit:** Double-click cells to fix typos in-browser.
+    * 📥 **Exports to Excel:** Downloads clean `.xlsx` spreadsheets.
     """)
 
 # Hero Header
-st.markdown('<div class="status-badge">⚡ Powered by Gemini 2.5 Flash Vision</div>', unsafe_allow_html=True)
-st.markdown('<div class="gradient-title">DataLens AI Studio</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-heading">Autonomous Document-to-Data Pipeline & Executive Tabular Synthesizer</div>', unsafe_allow_html=True)
+st.markdown('<div class="status-badge">⚡ Instant Document to Spreadsheet</div>', unsafe_allow_html=True)
+st.markdown('<div class="excel-title">📊 SheetGen AI</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-heading">Upload any PDF or image table $\\rightarrow$ Automatically convert it to a clean, editable Excel file.</div>', unsafe_allow_html=True)
 
-# 3 Feature Spec Cards
+# 3 Step Explanatory Cards
 col_card1, col_card2, col_card3 = st.columns(3)
 with col_card1:
     st.markdown("""
-    <div class="glass-card">
-        <div style="font-size: 1.25rem; font-weight:700; color:#60a5fa; margin-bottom:4px;">01. Ingestion</div>
-        <div style="font-size:0.85rem; color:#94a3b8;">High-resolution scan & vector PDF parsing with table boundary detection.</div>
+    <div class="feature-card">
+        <div style="font-size: 1.15rem; font-weight:700; color:#4ade80; margin-bottom:4px;">1. Upload File</div>
+        <div style="font-size:0.85rem; color:#94a3b8;">Drop scanned photos or multi-page PDFs with data tables.</div>
     </div>
     """, unsafe_allow_html=True)
 with col_card2:
     st.markdown("""
-    <div class="glass-card">
-        <div style="font-size: 1.25rem; font-weight:700; color:#a855f7; margin-bottom:4px;">02. Sanitization</div>
-        <div style="font-size:0.85rem; color:#94a3b8;">Removes noisy symbols, fixes broken layouts, and aligns column types.</div>
+    <div class="feature-card">
+        <div style="font-size: 1.15rem; font-weight:700; color:#38bdf8; margin-bottom:4px;">2. AI Cleans & Formats</div>
+        <div style="font-size:0.85rem; color:#94a3b8;">AI extracts rows, columns, and fixes messy numbers automatically.</div>
     </div>
     """, unsafe_allow_html=True)
 with col_card3:
     st.markdown("""
-    <div class="glass-card">
-        <div style="font-size: 1.25rem; font-weight:700; color:#ec4899; margin-bottom:4px;">03. Multi-Tab Export</div>
-        <div style="font-size:0.85rem; color:#94a3b8;">Outputs clean, multi-sheet Excel (.xlsx) workbooks or flat CSV files.</div>
+    <div class="feature-card">
+        <div style="font-size: 1.15rem; font-weight:700; color:#a78bfa; margin-bottom:4px;">3. Download Excel (.xlsx)</div>
+        <div style="font-size:0.85rem; color:#94a3b8;">Get a multi-sheet Excel file ready for formulas and charts.</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -192,28 +157,28 @@ st.markdown("<br>", unsafe_allow_html=True)
 def process_document(file_bytes, mime_type, key):
     client = genai.Client(api_key=key)
     prompt = """
-    You are an expert Data Engineer and Senior Financial Analyst.
+    You are an expert Data Specialist.
     Analyze the uploaded document or image carefully:
     
     1. EXTRACT ALL DISTINCT TABLES:
-       - Identify each separate table clearly (e.g. Income Statement, Segment Revenue, Operational Breakdown).
-       - Sanitize numbers: remove stray footnote symbols, convert string representations to clean floats or integers where appropriate.
-       - Provide standard, concise column headers.
+       - Identify each separate table clearly (e.g. Table 1, Table 2).
+       - Clean numbers: remove currency symbols and footnote markers so Excel can calculate sums directly.
+       - Provide standard column headers.
        
-    2. EXECUTIVE BUSINESS ANALYSIS:
-       - Classify the document domain (e.g., Financial Earnings, Retail Ledger, Inventory, Invoice).
-       - Provide key patterns, significant variance, anomalies, and summary metrics.
+    2. SUMMARY & PATTERNS:
+       - What kind of data is this (Financials, Sales, Inventory, Invoice)?
+       - Write a brief, easy-to-read summary with key insights and trends.
 
-    Return your response strictly as raw valid JSON without markdown fences:
+    Return your response strictly as valid JSON:
     {
-      "analysis": "Markdown formatted executive summary and pattern breakdown.",
+      "analysis": "Short Markdown summary of key business insights.",
       "tables": [
         {
           "table_name": "Table Name",
-          "headers": ["Col 1", "Col 2", "Col 3"],
+          "headers": ["Header 1", "Header 2", "Header 3"],
           "rows": [
-            ["Val 1", "Val 2", "Val 3"],
-            ["Val 4", "Val 5", "Val 6"]
+            ["Row1 Col1", "Row1 Col2", "Row1 Col3"],
+            ["Row2 Col1", "Row2 Col2", "Row2 Col3"]
           ]
         }
       ]
@@ -232,10 +197,10 @@ def process_document(file_bytes, mime_type, key):
     return response.text
 
 # Document Upload Section
-uploaded_file = st.file_uploader("Drop PDF document or scanned image here", type=["pdf", "png", "jpg", "jpeg"])
+uploaded_file = st.file_uploader("Drop your PDF document or image here", type=["pdf", "png", "jpg", "jpeg"])
 
 if uploaded_file and not api_key:
-    st.warning("⚠️ Please provide a Gemini API Key in the left sidebar to initialize the AI engine.")
+    st.warning("⚠️ Please provide a Gemini API Key in the left sidebar to start.")
 
 if uploaded_file and api_key:
     file_type = uploaded_file.type
@@ -243,7 +208,7 @@ if uploaded_file and api_key:
     
     col_prev, col_action = st.columns([1, 2])
     with col_prev:
-        st.subheader("📄 Document Preview")
+        st.subheader("📄 Uploaded File Preview")
         if "image" in file_type:
             img = Image.open(io.BytesIO(file_bytes))
             st.image(img, use_container_width=True)
@@ -251,33 +216,33 @@ if uploaded_file and api_key:
             st.info(f"Loaded PDF: **{uploaded_file.name}** ({len(file_bytes)/1024:.1f} KB)")
             
     with col_action:
-        st.subheader("⚡ Execute Pipeline")
-        st.caption("Trigger optical document analysis, table segmentation, and value normalization.")
-        if st.button("🚀 Extract & Synthesize Data", type="primary", use_container_width=True):
-            with st.spinner("Processing document matrix and synthesizing tables..."):
+        st.subheader("⚡ Convert to Excel")
+        st.caption("Click below to extract all tables and generate your spreadsheet.")
+        if st.button("🚀 Extract Tables & Convert to Excel", type="primary", use_container_width=True):
+            with st.spinner("Reading document and generating Excel sheets..."):
                 try:
                     raw_response = process_document(file_bytes, file_type, api_key)
                     data = json.loads(raw_response)
                     st.session_state["extracted_data"] = data
-                    st.toast("Data successfully synthesized!", icon="✨")
+                    st.toast("Extraction complete!", icon="✅")
                 except Exception as e:
                     st.error(f"Processing Error: {e}")
 
-# Display Results & Interactive Data Editor
+# Results Display & In-Browser Table Editor
 if "extracted_data" in st.session_state:
     data = st.session_state["extracted_data"]
     
     st.markdown("---")
-    st.subheader("📊 Executive Business Analysis")
-    st.markdown(data.get("analysis", "No commentary generated."))
+    st.subheader("💡 Key Summary & Insights")
+    st.markdown(data.get("analysis", "No summary provided."))
     
     tables = data.get("tables", [])
     if not tables:
-        st.warning("No structured tabular data detected in the provided file.")
+        st.warning("No tables found in this file.")
     else:
         st.markdown("---")
-        st.subheader("📝 Live Interactive Data Grid")
-        st.caption("Double-click any cell to adjust values or correct typos prior to downloading.")
+        st.subheader("✏️ Review & Edit Tables")
+        st.caption("You can double-click any cell below to fix any typos before downloading.")
         
         edited_dfs = {}
         for idx, tbl in enumerate(tables):
@@ -287,11 +252,11 @@ if "extracted_data" in st.session_state:
             
             df = pd.DataFrame(rows, columns=headers if headers else None)
             
-            st.markdown(f"#### 📑 {table_name}")
+            st.markdown(f"#### 📊 {table_name}")
             edited_df = st.data_editor(df, key=f"editor_{idx}", num_rows="dynamic", use_container_width=True)
             edited_dfs[table_name] = edited_df
 
-        # Generate Multi-Tab Excel Workbook
+        # Multi-Tab Excel Generator
         excel_buffer = io.BytesIO()
         with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
             for name, df in edited_dfs.items():
@@ -303,9 +268,9 @@ if "extracted_data" in st.session_state:
         c1, c2 = st.columns(2)
         with c1:
             st.download_button(
-                label="📥 Download Excel Workbook (.xlsx)",
+                label="📥 Download Excel File (.xlsx)",
                 data=excel_data,
-                file_name="datalens_extracted_tables.xlsx",
+                file_name="extracted_data.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 type="primary",
                 use_container_width=True
@@ -315,11 +280,11 @@ if "extracted_data" in st.session_state:
                 first_df = list(edited_dfs.values())[0]
                 csv_data = first_df.to_csv(index=False).encode('utf-8')
                 st.download_button(
-                    label="📥 Download CSV (.csv)",
+                    label="📥 Download CSV File (.csv)",
                     data=csv_data,
-                    file_name="datalens_extracted_table.csv",
+                    file_name="extracted_table.csv",
                     mime="text/csv",
                     use_container_width=True
                 )
             else:
-                st.info("ℹ️ Multiple tables detected: Download as Excel to preserve multi-sheet organization.")
+                st.info("ℹ️ Multiple tables detected: Use Excel download to keep them in separate sheets.")
