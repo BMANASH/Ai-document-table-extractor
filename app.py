@@ -15,7 +15,10 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Modern Dark Theme & Clean Font Styling
+# Fetch API Key silently from Streamlit Secrets or Environment
+api_key = st.secrets.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY")
+
+# Modern Dark Theme & Typography
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap');
@@ -96,38 +99,28 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Detect API Key from Secrets or Manual Entry
-api_key = ""
-if "GEMINI_API_KEY" in st.secrets:
-    api_key = st.secrets["GEMINI_API_KEY"]
-elif os.environ.get("GEMINI_API_KEY"):
-    api_key = os.environ.get("GEMINI_API_KEY")
-
-# Sidebar Configuration
+# Clean Sidebar without any API Input Boxes
 with st.sidebar:
-    st.markdown("### ⚙️ App Settings")
-    
-    if api_key:
-        st.success("✅ AI Engine Connected", icon="🔒")
-    else:
-        api_key = st.text_input("Gemini API Key", type="password", placeholder="Paste API Key here...", help="Enter your free key from aistudio.google.com")
-
+    st.markdown("### 📗 SheetGen AI")
+    st.caption("Automated Tabular Data Extraction Engine")
     st.markdown("---")
     st.markdown("""
-    **What this app does:**
-    * 📑 **Reads PDFs & Images:** Scans reports, invoices, and receipts.
+    **Core Capabilities:**
+    * 📑 **Reads PDFs & Images:** Scans reports, invoices, and statements.
     * 🗃️ **Finds Multiple Tables:** Separates different tables cleanly.
     * 🧹 **Cleans Up Numbers:** Removes symbols so formulas work.
     * ✏️ **Lets You Edit:** Double-click cells to fix typos in-browser.
     * 📥 **Exports to Excel:** Downloads clean `.xlsx` spreadsheets.
     """)
+    st.markdown("---")
+    st.markdown("🟢 **System Status:** Ready")
 
 # Hero Header
 st.markdown('<div class="status-badge">⚡ Instant Document to Spreadsheet</div>', unsafe_allow_html=True)
 st.markdown('<div class="excel-title">📊 SheetGen AI</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-heading">Upload any PDF or image table $\\rightarrow$ Automatically convert it to a clean, editable Excel file.</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-heading">Upload any PDF or image table → Automatically convert it to a clean, editable Excel file.</div>', unsafe_allow_html=True)
 
-# 3 Step Explanatory Cards
+# 3 Step Visual Workflow Cards
 col_card1, col_card2, col_card3 = st.columns(3)
 with col_card1:
     st.markdown("""
@@ -153,7 +146,7 @@ with col_card3:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# Extraction Logic
+# Helper Function: Process via Gemini Vision
 def process_document(file_bytes, mime_type, key):
     client = genai.Client(api_key=key)
     prompt = """
@@ -199,36 +192,36 @@ def process_document(file_bytes, mime_type, key):
 # Document Upload Section
 uploaded_file = st.file_uploader("Drop your PDF document or image here", type=["pdf", "png", "jpg", "jpeg"])
 
-if uploaded_file and not api_key:
-    st.warning("⚠️ Please provide a Gemini API Key in the left sidebar to start.")
+if uploaded_file:
+    if not api_key:
+        st.error("⚠️ System Error: API Key not configured in Streamlit Secrets. Please add GEMINI_API_KEY to your app secrets.")
+    else:
+        file_type = uploaded_file.type
+        file_bytes = uploaded_file.read()
+        
+        col_prev, col_action = st.columns([1, 2])
+        with col_prev:
+            st.subheader("📄 Uploaded File Preview")
+            if "image" in file_type:
+                img = Image.open(io.BytesIO(file_bytes))
+                st.image(img, use_container_width=True)
+            elif file_type == "application/pdf":
+                st.info(f"Loaded PDF: **{uploaded_file.name}** ({len(file_bytes)/1024:.1f} KB)")
+                
+        with col_action:
+            st.subheader("⚡ Convert to Excel")
+            st.caption("Click below to extract all tables and generate your spreadsheet.")
+            if st.button("🚀 Extract Tables & Convert to Excel", type="primary", use_container_width=True):
+                with st.spinner("Reading document and generating Excel sheets..."):
+                    try:
+                        raw_response = process_document(file_bytes, file_type, api_key)
+                        data = json.loads(raw_response)
+                        st.session_state["extracted_data"] = data
+                        st.toast("Extraction complete!", icon="✅")
+                    except Exception as e:
+                        st.error(f"Processing Error: {e}")
 
-if uploaded_file and api_key:
-    file_type = uploaded_file.type
-    file_bytes = uploaded_file.read()
-    
-    col_prev, col_action = st.columns([1, 2])
-    with col_prev:
-        st.subheader("📄 Uploaded File Preview")
-        if "image" in file_type:
-            img = Image.open(io.BytesIO(file_bytes))
-            st.image(img, use_container_width=True)
-        elif file_type == "application/pdf":
-            st.info(f"Loaded PDF: **{uploaded_file.name}** ({len(file_bytes)/1024:.1f} KB)")
-            
-    with col_action:
-        st.subheader("⚡ Convert to Excel")
-        st.caption("Click below to extract all tables and generate your spreadsheet.")
-        if st.button("🚀 Extract Tables & Convert to Excel", type="primary", use_container_width=True):
-            with st.spinner("Reading document and generating Excel sheets..."):
-                try:
-                    raw_response = process_document(file_bytes, file_type, api_key)
-                    data = json.loads(raw_response)
-                    st.session_state["extracted_data"] = data
-                    st.toast("Extraction complete!", icon="✅")
-                except Exception as e:
-                    st.error(f"Processing Error: {e}")
-
-# Results Display & In-Browser Table Editor
+# Results Display & Editable Table Grid
 if "extracted_data" in st.session_state:
     data = st.session_state["extracted_data"]
     
@@ -242,7 +235,7 @@ if "extracted_data" in st.session_state:
     else:
         st.markdown("---")
         st.subheader("✏️ Review & Edit Tables")
-        st.caption("You can double-click any cell below to fix any typos before downloading.")
+        st.caption("Double-click any cell below to fix any typos before downloading.")
         
         edited_dfs = {}
         for idx, tbl in enumerate(tables):
