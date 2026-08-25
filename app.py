@@ -389,7 +389,7 @@ EXCEL_ICON_MAIN = '<svg width="48" height="48" viewBox="0 0 48 48" fill="none" x
 
 EXCEL_ICON_SIDEBAR = '<svg width="28" height="28" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align: middle;"><rect x="14" y="6" width="28" height="36" rx="4" fill="#107C41"/><rect x="23" y="13" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="31" y="13" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="23" y="19" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="31" y="19" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="23" y="25" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="31" y="25" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="23" y="31" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="31" y="31" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="6" y="9" width="22" height="30" rx="3" fill="#185C37"/><path d="M11.5 30L15.3 24L11.8 18H15.2L17 21.5L18.8 18H22.2L18.7 24L22.5 30H19.1L17 26.2L14.9 30H11.5Z" fill="white"/></svg>'
 
-# Static Sidebar Configuration with Active Model Display
+# Static Sidebar Configuration with Active Model & Execution Time Display
 with st.sidebar:
     st.markdown(f'<div style="display:flex; align-items:center; gap:10px; margin-bottom: 6px;">{EXCEL_ICON_SIDEBAR}<span style="font-size:1.35rem; font-weight:700; color:#ffffff; font-family:\'Space Grotesk\',sans-serif;">SheetGen AI</span></div>', unsafe_allow_html=True)
     st.caption("Universal Tabular Extraction & AI Dashboard Suite")
@@ -413,14 +413,15 @@ with st.sidebar:
     st.markdown("<hr style='border:none; border-top:1px solid rgba(255,255,255,0.08); margin:12px 0;'>", unsafe_allow_html=True)
     
     # Active Model & Latency Display in Sidebar
-    active_m = st.session_state.get("model_used", "gemini-3.6-flash")
+    active_m = st.session_state.get("model_used", "gemini-3.5-flash")
     m_time = st.session_state.get("extraction_time", "")
-    time_badge = f" • {m_time}s" if m_time else ""
+    time_info = f"<div style='font-size: 0.76rem; color: #38bdf8; margin-top: 3px;'>⏱️ Time taken: {m_time}s</div>" if m_time else ""
     
     st.markdown(f"""
     <div style="background: rgba(34, 197, 94, 0.08); border: 1px solid rgba(34, 197, 94, 0.25); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px;">
-        <div style="font-size: 0.75rem; font-weight: 700; color: #4ade80; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 3px;">Active AI Engine</div>
-        <div style="font-size: 0.85rem; font-weight: 600; color: #ffffff;">⚡ {active_m}{time_badge}</div>
+        <div style="font-size: 0.72rem; font-weight: 700; color: #4ade80; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px;">Active AI Engine</div>
+        <div style="font-size: 0.85rem; font-weight: 600; color: #ffffff;">⚡ {active_m}</div>
+        {time_info}
     </div>
     """, unsafe_allow_html=True)
     st.markdown("🟢 **System Status:** Ready")
@@ -1038,7 +1039,7 @@ def generate_ai_copilot_excel_workbook(sheets_map, master_df, ai_spec):
     return buf.getvalue()
 
 # =========================================================================
-# HIGH-SPEED EXTRACTION CASCADE (8-15s TARGET)
+# HIGH-SPEED EXTRACTION CASCADE (DIRECT FAST PATH)
 # =========================================================================
 def execute_extraction_cascade(files_data, key_str):
     genai.configure(api_key=key_str)
@@ -1085,8 +1086,8 @@ def execute_extraction_cascade(files_data, key_str):
             
     contents.append(prompt)
 
-    # Active Vision Model Sequence
-    models_to_try = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-2.5-flash"]
+    # Active Vision Model Hierarchy
+    models_to_try = ["gemini-3.5-flash", "gemini-3.6-flash", "gemini-2.5-flash"]
     last_err = None
     start_t = time.time()
     
@@ -1118,8 +1119,8 @@ def execute_extraction_cascade(files_data, key_str):
 def ask_ai_for_dashboard_spec(df, user_instruction, key_str):
     genai.configure(api_key=key_str)
     
-    saved_model = st.session_state.get("verified_model", "gemini-3.6-flash")
-    models_to_try = [saved_model, "gemini-3.6-flash", "gemini-3.5-flash", "gemini-2.5-flash"]
+    saved_model = st.session_state.get("verified_model", "gemini-3.5-flash")
+    models_to_try = [saved_model, "gemini-3.5-flash", "gemini-3.6-flash", "gemini-2.5-flash"]
     metrics_context = profile_dataset_metrics(df)
     
     prompt = f"""
@@ -1341,13 +1342,19 @@ if "extracted_data" in st.session_state:
     
     st.markdown("---")
     
-    # Active Model & Latency Notification Banner
-    used_m = st.session_state.get("model_used", "gemini-3.6-flash")
-    e_time = st.session_state.get("extraction_time", "8.2")
+    # Active Model & Latency Display Pill Row
+    used_m = st.session_state.get("model_used", "gemini-3.5-flash")
+    e_time = st.session_state.get("extraction_time", "57.0")
     st.markdown(f"""
-    <div style="display:inline-flex; align-items:center; gap:8px; background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.35); border-radius:9999px; padding:5px 14px; margin-bottom:12px;">
-        <span style="font-size:0.8rem; font-weight:700; color:#4ade80;">⚡ AI Vision Engine:</span>
-        <span style="font-size:0.8rem; font-weight:600; color:#ffffff;">{used_m} ({e_time}s)</span>
+    <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-bottom:14px;">
+        <div style="display:inline-flex; align-items:center; gap:6px; background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.35); border-radius:9999px; padding:5px 14px;">
+            <span style="font-size:0.8rem; font-weight:700; color:#4ade80;">⚡ AI Vision Engine:</span>
+            <span style="font-size:0.8rem; font-weight:600; color:#ffffff;">{used_m}</span>
+        </div>
+        <div style="display:inline-flex; align-items:center; gap:6px; background:rgba(56,189,248,0.1); border:1px solid rgba(56,189,248,0.35); border-radius:9999px; padding:5px 14px;">
+            <span style="font-size:0.8rem; font-weight:700; color:#38bdf8;">⏱️ Time taken to process your data:</span>
+            <span style="font-size:0.8rem; font-weight:600; color:#ffffff;">{e_time}s</span>
+        </div>
     </div>
     """, unsafe_allow_html=True)
     
