@@ -240,24 +240,24 @@ with col_card3:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# Helper Function: Process Multi-file Batch via Gemini Vision
+# Helper Function: Process Multi-file Batch via Gemini 1.5 Flash Vision
 def process_documents(files_data, key):
     client = genai.Client(api_key=key)
     prompt = """
     You are an expert Data Specialist.
-    Analyze all the uploaded document(s) and/or image(s) carefully:
+    Analyze all the uploaded document(s) and/or image(s) carefully (including handwritten text and registers):
     
     1. EXTRACT ALL DISTINCT TABLES:
        - Identify every separate table clearly across all uploaded files and pages.
        - Assign an intuitive, distinct title for each detected table (e.g. Employee Roster, P&L Statement, Invoice Breakdown).
-       - Clean numbers: remove stray symbols, handwritten noise, and currency prefixes so Excel can sum values directly.
+       - Accurately transcribe names, numbers, phone numbers, states, and remarks.
        - Provide standard column headers.
        
     2. SUMMARY & PATTERNS:
-       - What kind of data is this overall (e.g., Financial Ledger, Roster, Inventory, Attendance Register)?
+       - What kind of data is this overall (e.g., Attendance Register, Financial Ledger, Roster, Inventory)?
        - Write a concise, bulleted executive summary with patterns, key observations, and totals across the uploaded files.
 
-    Return your response strictly as valid JSON:
+    Return your response strictly as valid JSON matching this schema:
     {
       "analysis": "Short Markdown summary of key business insights across all files.",
       "tables": [
@@ -278,13 +278,22 @@ def process_documents(files_data, key):
     contents.append(prompt)
 
     response = client.models.generate_content(
-        model='gemini-2.5-flash',
+        model='gemini-1.5-flash',
         contents=contents,
         config=types.GenerateContentConfig(
             response_mime_type="application/json"
         )
     )
-    return response.text
+    
+    # Clean possible markdown wrap
+    text = response.text.strip()
+    if text.startswith("```json"):
+        text = text[7:]
+    if text.startswith("```"):
+        text = text[3:]
+    if text.endswith("```"):
+        text = text[:-3]
+    return text.strip()
 
 # Document Upload Section with Multiple File Support
 uploaded_files = st.file_uploader(
@@ -318,8 +327,8 @@ if uploaded_files:
             if st.button("🚀 Extract Tables & Convert to Excel", type="primary", use_container_width=True):
                 with st.spinner(f"Analyzing {len(uploaded_files)} file(s) and generating Excel workbook..."):
                     try:
-                        raw_response = process_documents(files_data, api_key)
-                        data = json.loads(raw_response)
+                        raw_json_str = process_documents(files_data, api_key)
+                        data = json.loads(raw_json_str)
                         st.session_state["extracted_data"] = data
                         st.toast(f"Successfully processed {len(uploaded_files)} file(s)!", icon="✅")
                     except Exception as e:
