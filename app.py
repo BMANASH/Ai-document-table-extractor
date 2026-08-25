@@ -452,7 +452,7 @@ with col_card3:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# Fast In-Memory Image Resizer (Optimized for Sub-10s Vision Processing)
+# Fast In-Memory Image Resizer (Sub-10s Vision Processing Target)
 def prepare_image(raw_bytes):
     img = Image.open(io.BytesIO(raw_bytes))
     if img.mode != "RGB":
@@ -499,6 +499,39 @@ def profile_dataset_metrics(df):
                 "top_5_frequencies": top_counts
             }
     return summary
+
+# Cached Dynamic Model Registry Query (Fetches active vision endpoints for your key)
+@st.cache_data(ttl=3600, show_spinner=False)
+def get_supported_gemini_models(key_str):
+    genai.configure(api_key=key_str)
+    discovered = []
+    try:
+        for m in genai.list_models():
+            methods = getattr(m, 'supported_generation_methods', [])
+            name = m.name if hasattr(m, 'name') else str(m)
+            if "generateContent" in methods:
+                name_clean = name.replace("models/", "")
+                name_low = name_clean.lower()
+                if not any(x in name_low for x in ['embed', 'imagen', 'tts', 'aqa', 'realtime']):
+                    discovered.append(name_clean)
+    except Exception:
+        pass
+
+    # Sort flash vision models first (fastest response), then pro models
+    def sort_score(n):
+        nl = n.lower()
+        if "1.5-flash" in nl:
+            return 1
+        elif "flash" in nl:
+            return 2
+        elif "1.5-pro" in nl:
+            return 3
+        return 4
+
+    discovered.sort(key=sort_score)
+    if not discovered:
+        discovered = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash"]
+    return discovered
 
 # =========================================================================
 # EXCEL GENERATOR 1: BASE DATA ONLY (.XLSX)
@@ -1026,10 +1059,14 @@ def generate_ai_copilot_excel_workbook(sheets_map, master_df, ai_spec):
     return buf.getvalue()
 
 # =========================================================================
-# HIGH-SPEED EXTRACTION ENGINE (8-15s TARGET)
+# HIGH-SPEED EXTRACTION CASCADE
 # =========================================================================
 def execute_extraction_cascade(files_data, key_str):
     genai.configure(api_key=key_str)
+    
+    # Check if a working verified model was already saved in session state
+    saved_model = st.session_state.get("verified_model")
+    available_models = [saved_model] if saved_model else get_supported_gemini_models(key_str)
     
     prompt = """
     You are an expert Data Engineer and OCR Analyst.
@@ -1073,11 +1110,8 @@ def execute_extraction_cascade(files_data, key_str):
             
     contents.append(prompt)
 
-    # Primary high-speed vision models
-    fast_models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
     last_err = None
-    
-    for model_name in fast_models:
+    for model_name in available_models:
         try:
             model = genai.GenerativeModel(model_name)
             response = model.generate_content(
@@ -1090,16 +1124,22 @@ def execute_extraction_cascade(files_data, key_str):
                     raw_text = raw_text.split("```json")[1].split("```")[0].strip()
                 elif "```" in raw_text:
                     raw_text = raw_text.split("```")[1].split("```")[0].strip()
+                
+                # Save the successful verified model in session state for fast-path reuse
+                st.session_state["verified_model"] = model_name
                 return raw_text, model_name
         except Exception as err:
             last_err = err
             continue
 
-    raise Exception(f"Extraction failed. Last Error: {last_err}")
+    raise Exception(f"Extraction failed across available models. Last Error: {last_err}")
 
 # High-Speed AI Custom Dashboard Copilot Function
 def ask_ai_for_dashboard_spec(df, user_instruction, key_str):
     genai.configure(api_key=key_str)
+    
+    saved_model = st.session_state.get("verified_model")
+    available_models = [saved_model] if saved_model else get_supported_gemini_models(key_str)
     metrics_context = profile_dataset_metrics(df)
     
     prompt = f"""
@@ -1134,8 +1174,7 @@ def ask_ai_for_dashboard_spec(df, user_instruction, key_str):
     }}
     """
     
-    fast_models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"]
-    for model_name in fast_models:
+    for model_name in available_models:
         try:
             model = genai.GenerativeModel(model_name)
             res = model.generate_content(
