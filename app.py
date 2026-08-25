@@ -3,12 +3,11 @@ import pandas as pd
 import io
 import json
 import os
-import base64
 from PIL import Image
+from pypdf import PdfReader
 import google.generativeai as genai
-from openai import OpenAI
 
-# Page Config
+# Page Configuration
 st.set_page_config(
     page_title="SheetGen AI | Document to Excel Converter",
     page_icon="📊",
@@ -16,11 +15,10 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Fetch Keys from Secrets or Environment
-gemini_key = st.secrets.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY", "")
-openai_key = st.secrets.get("OPENAI_API_KEY") or os.environ.get("OPENAI_API_KEY", "")
+# Fetch API Key silently from Streamlit Secrets or Environment
+api_key = st.secrets.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY", "")
 
-# Modern Dark Theme, Static Sidebar Lock & Motion UI CSS
+# Modern Dark Theme, Static Sidebar & Motion UI CSS
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap');
@@ -168,7 +166,7 @@ EXCEL_ICON_MAIN = '<svg width="48" height="48" viewBox="0 0 48 48" fill="none" x
 
 EXCEL_ICON_SIDEBAR = '<svg width="28" height="28" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align: middle;"><rect x="14" y="6" width="28" height="36" rx="4" fill="#107C41"/><rect x="23" y="13" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="31" y="13" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="23" y="19" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="31" y="19" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="23" y="25" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="31" y="25" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="23" y="31" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="31" y="31" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="6" y="9" width="22" height="30" rx="3" fill="#185C37"/><path d="M11.5 30L15.3 24L11.8 18H15.2L17 21.5L18.8 18H22.2L18.7 24L22.5 30H19.1L17 26.2L14.9 30H11.5Z" fill="white"/></svg>'
 
-# Clean Static Sidebar
+# Sidebar Configuration
 with st.sidebar:
     st.markdown(f'<div style="display:flex; align-items:center; gap:10px; margin-bottom: 6px;">{EXCEL_ICON_SIDEBAR}<span style="font-size:1.35rem; font-weight:700; color:#ffffff; font-family:\'Space Grotesk\',sans-serif;">SheetGen AI</span></div>', unsafe_allow_html=True)
     st.caption("Automated Tabular Data Extraction Engine")
@@ -177,16 +175,16 @@ with st.sidebar:
     st.markdown("<div style='font-size:0.8rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:#94a3b8; margin-bottom:10px;'>Core Capabilities</div>", unsafe_allow_html=True)
     
     sidebar_items_html = (
-        '<div class="sidebar-item"><div class="sidebar-title">📑 Batch File & PDF Parsing</div>'
-        '<div class="sidebar-desc">Scans tables, rosters, handwritten notes, and PDF pages.</div></div>'
+        '<div class="sidebar-item"><div class="sidebar-title">📑 Batch OCR & PDF Parsing</div>'
+        '<div class="sidebar-desc">Scans multi-page financial statements, bills, and data sheets.</div></div>'
         '<div class="sidebar-item"><div class="sidebar-title">🗃️ Multi-Table Isolation</div>'
         '<div class="sidebar-desc">Separates distinct tables cleanly into separate tabs.</div></div>'
         '<div class="sidebar-item"><div class="sidebar-title">🧹 Number Sanitization</div>'
-        '<div class="sidebar-desc">Cleans currencies & symbols for instant formulas.</div></div>'
-        '<div class="sidebar-item"><div class="sidebar-title">✏️ Live Interactive Grid</div>'
-        '<div class="sidebar-desc">Double-click cells to adjust values in-browser.</div></div>'
+        '<div class="sidebar-desc">Removes stray characters so Excel math formulas work instantly.</div></div>'
+        '<div class="sidebar-item"><div class="sidebar-title">✏️ In-Browser Data Grid</div>'
+        '<div class="sidebar-desc">Double-click cells to adjust values before downloading.</div></div>'
         '<div class="sidebar-item"><div class="sidebar-title">📥 Native .xlsx Generator</div>'
-        '<div class="sidebar-desc">Exports standard multi-sheet Excel workbooks.</div></div>'
+        '<div class="sidebar-desc">Produces standard multi-sheet Excel workbooks.</div></div>'
     )
     st.markdown(sidebar_items_html, unsafe_allow_html=True)
     st.markdown("<hr style='border:none; border-top:1px solid rgba(255,255,255,0.08); margin:12px 0;'>", unsafe_allow_html=True)
@@ -204,7 +202,7 @@ with col_card1:
     card1_html = (
         '<div class="feature-card card-anim-1">'
         '<div style="font-size: 1.15rem; font-weight:700; color:#4ade80; margin-bottom:4px;">1. Upload File(s)</div>'
-        '<div style="font-size:0.85rem; color:#94a3b8; line-height:1.4;">Drop single or multiple images/PDFs containing tabular data.</div>'
+        '<div style="font-size:0.85rem; color:#94a3b8; line-height:1.4;">Drop scanned photos or multi-page PDFs containing data tables.</div>'
         '</div>'
     )
     st.markdown(card1_html, unsafe_allow_html=True)
@@ -229,25 +227,27 @@ with col_card3:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# Automated Vision Backend Engine
-def process_documents_auto(files_data):
-    prompt_text = """
+# Extraction Processor
+def process_with_gemini(files_data, key):
+    genai.configure(api_key=key)
+    
+    prompt = """
     You are an expert Data Specialist and OCR Analyst.
-    Analyze all the uploaded document(s) and image(s) carefully (including handwritten text and registers):
+    Analyze all the uploaded document(s) and/or image(s) carefully (including handwritten text and registers):
     
     1. EXTRACT ALL DISTINCT TABLES:
        - Identify every separate table clearly across all uploaded files and pages.
        - Assign an intuitive, distinct title for each detected table (e.g. Employee Roster, P&L Statement, Invoice Breakdown).
        - Accurately transcribe names, numbers, phone numbers, states, and remarks.
-       - Provide standard, clean column headers.
+       - Provide standard column headers.
        
     2. SUMMARY & PATTERNS:
-       - What kind of data is this overall?
-       - Write a concise bulleted summary of key patterns, observations, and counts.
+       - What kind of data is this overall (e.g., Attendance Register, Financial Ledger, Roster, Inventory)?
+       - Write a concise, bulleted executive summary with patterns, key observations, and totals across the uploaded files.
 
     Return your response strictly as valid JSON matching this schema:
     {
-      "analysis": "Short Markdown summary of key business insights.",
+      "analysis": "Short Markdown summary of key business insights across all files.",
       "tables": [
         {
           "table_name": "Intuitive Table Name",
@@ -261,64 +261,46 @@ def process_documents_auto(files_data):
     }
     """
     
-    # Priority 1: OpenAI GPT-4o Vision if key available
-    if openai_key:
-        try:
-            client = OpenAI(api_key=openai_key)
-            content_payload = [{"type": "text", "text": prompt_text}]
-            for file_bytes, mime_type in files_data:
-                b64_str = base64.b64encode(file_bytes).decode('utf-8')
-                content_payload.append({
-                    "type": "image_url",
-                    "image_url": {"url": f"data:{mime_type};base64,{b64_str}"}
-                })
+    contents = []
+    for file_bytes, mime_type in files_data:
+        if "image" in mime_type:
+            img = Image.open(io.BytesIO(file_bytes))
+            contents.append(img)
+        elif "pdf" in mime_type:
+            reader = PdfReader(io.BytesIO(file_bytes))
+            pdf_text = "\n".join([page.extract_text() or "" for page in reader.pages])
+            contents.append(f"PDF Content:\n{pdf_text}")
             
-            response = client.chat.completions.create(
-                model="gpt-4o",
-                messages=[{"role": "user", "content": content_payload}],
-                response_format={"type": "json_object"}
-            )
-            return response.choices[0].message.content.strip()
-        except Exception:
-            pass # Fall through to Gemini
+    contents.append(prompt)
 
-    # Priority 2: Gemini Vision with verified models
-    if gemini_key:
-        genai.configure(api_key=gemini_key)
-        
-        contents = []
-        for file_bytes, mime_type in files_data:
-            if "image" in mime_type:
-                img = Image.open(io.BytesIO(file_bytes))
-                contents.append(img)
-            elif "pdf" in mime_type:
-                contents.append({"mime_type": mime_type, "data": file_bytes})
-        contents.append(prompt_text)
-        
-        # Test proven multimodal vision endpoints
-        vision_candidates = ["gemini-1.5-flash", "gemini-1.5-pro"]
-        for candidate in vision_candidates:
-            try:
-                model = genai.GenerativeModel(candidate)
-                response = model.generate_content(
-                    contents,
-                    generation_config={"response_mime_type": "application/json"}
-                )
-                if response and response.text:
-                    raw_text = response.text.strip()
-                    if raw_text.startswith("```json"):
-                        raw_text = raw_text[7:]
-                    if raw_text.startswith("```"):
-                        raw_text = raw_text[3:]
-                    if raw_text.endswith("```"):
-                        raw_text = raw_text[:-3]
-                    return raw_text.strip()
-            except Exception:
-                continue
+    # Dynamic model binding
+    supported_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+    target_model = None
+    
+    for candidate in ["models/gemini-1.5-flash", "models/gemini-1.5-pro", "models/gemini-2.0-flash-exp", "models/gemini-2.0-flash"]:
+        if candidate in supported_models:
+            target_model = candidate
+            break
+            
+    if not target_model:
+        target_model = supported_models[0] if supported_models else "models/gemini-1.5-flash"
 
-    raise Exception("Could not process images. Please verify your API keys in Streamlit Secrets.")
+    model = genai.GenerativeModel(target_model)
+    response = model.generate_content(
+        contents,
+        generation_config={"response_mime_type": "application/json"}
+    )
+    
+    raw_text = response.text.strip()
+    if raw_text.startswith("```json"):
+        raw_text = raw_text[7:]
+    if raw_text.startswith("```"):
+        raw_text = raw_text[3:]
+    if raw_text.endswith("```"):
+        raw_text = raw_text[:-3]
+    return raw_text.strip()
 
-# Document Upload Section
+# Document Upload Section with Multiple File Support
 uploaded_files = st.file_uploader(
     "Drop your PDF document(s) or images here", 
     type=["pdf", "png", "jpg", "jpeg"], 
@@ -326,8 +308,8 @@ uploaded_files = st.file_uploader(
 )
 
 if uploaded_files:
-    if not (gemini_key or openai_key):
-        st.error("⚠️ System Error: No API keys configured in Streamlit Secrets.")
+    if not api_key:
+        st.error("⚠️ System Error: GEMINI_API_KEY not found in Streamlit Secrets. Please add it to your app settings.")
     else:
         files_data = []
         for file in uploaded_files:
@@ -350,7 +332,7 @@ if uploaded_files:
             if st.button("🚀 Extract Tables & Convert to Excel", type="primary", use_container_width=True):
                 with st.spinner("AI Vision is reading document data and generating Excel sheets..."):
                     try:
-                        raw_json_str = process_documents_auto(files_data)
+                        raw_json_str = process_with_gemini(files_data, api_key)
                         data = json.loads(raw_json_str)
                         st.session_state["extracted_data"] = data
                         st.toast(f"Successfully processed {len(uploaded_files)} file(s)!", icon="✅")
