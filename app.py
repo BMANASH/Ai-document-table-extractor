@@ -3,6 +3,7 @@ import pandas as pd
 import io
 import json
 import os
+import re
 from PIL import Image
 from pypdf import PdfReader
 import google.generativeai as genai
@@ -26,7 +27,6 @@ st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap');
 
-/* Force Global Dark Backgrounds on all devices */
 html, body, [data-testid="stAppViewContainer"], .stApp {
     background: radial-gradient(circle at 50% 0%, #111827 0%, #080b11 75%, #05070a 100%) !important;
     background-color: #080b11 !important;
@@ -34,14 +34,12 @@ html, body, [data-testid="stAppViewContainer"], .stApp {
     font-family: 'Plus Jakarta Sans', sans-serif !important;
 }
 
-/* Force Header bar dark */
 header[data-testid="stHeader"], [data-testid="stHeader"] {
     background-color: rgba(8, 11, 17, 0.8) !important;
     backdrop-filter: blur(10px) !important;
     color: #e2e8f0 !important;
 }
 
-/* Lock Sidebar to Static Width */
 section[data-testid="stSidebar"] {
     min-width: 300px !important;
     max-width: 300px !important;
@@ -86,7 +84,6 @@ h1, h2, h3 {
     margin-bottom: 1.75rem;
 }
 
-/* Steps Section Header */
 .steps-title {
     font-size: 0.85rem;
     font-weight: 700;
@@ -99,7 +96,6 @@ h1, h2, h3 {
     gap: 8px;
 }
 
-/* Floating Motion UI Animations */
 @keyframes floatCard1 {
     0% { transform: translateY(0px); }
     50% { transform: translateY(-7px); }
@@ -169,9 +165,6 @@ h1, h2, h3 {
     margin-bottom: 1rem;
 }
 
-/* =========================================================
-   HIGH-VISIBILITY ILLUMINATED FILE UPLOADER BOX
-   ========================================================= */
 div[data-testid="stFileUploader"] {
     background: radial-gradient(circle at 50% 50%, rgba(34, 197, 94, 0.08) 0%, rgba(17, 24, 39, 0.85) 100%) !important;
     border: 2px dashed rgba(34, 197, 94, 0.6) !important;
@@ -207,9 +200,6 @@ div[data-testid="stFileUploader"] section button {
     transition: all 0.2s ease-in-out !important;
 }
 
-/* =========================================================
-   GLASSMORPHISM AI LOADING ANIMATION CARD
-   ========================================================= */
 @keyframes pulseGlassGlow {
     0% {
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 18px rgba(34, 197, 94, 0.2);
@@ -302,7 +292,6 @@ div[data-testid="stFileUploader"] section button {
     gap: 6px;
 }
 
-/* ENLARGED & PERMANENTLY VISIBLE DATA EDITOR ACTION TOOLBAR */
 [data-testid="stElementToolbar"] {
     opacity: 1 !important;
     visibility: visible !important;
@@ -343,7 +332,6 @@ div[data-testid="stFileUploader"] section button {
     fill: currentColor !important;
 }
 
-/* Master Download Button Styling (Pure Excel Emerald Green) */
 .stDownloadButton > button {
     background: linear-gradient(135deg, #107C41 0%, #15803d 100%) !important;
     color: #ffffff !important;
@@ -370,7 +358,6 @@ div[data-testid="stFileUploader"] section button {
     box-shadow: 0 0 20px rgba(22, 163, 74, 0.4) !important;
 }
 
-/* Dialog Box Dark Theme */
 div[data-testid="stModal"] > div {
     background-color: #0d121f !important;
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
@@ -387,14 +374,14 @@ EXCEL_ICON_SIDEBAR = '<svg width="28" height="28" viewBox="0 0 48 48" fill="none
 # Static Sidebar Configuration
 with st.sidebar:
     st.markdown(f'<div style="display:flex; align-items:center; gap:10px; margin-bottom: 6px;">{EXCEL_ICON_SIDEBAR}<span style="font-size:1.35rem; font-weight:700; color:#ffffff; font-family:\'Space Grotesk\',sans-serif;">SheetGen AI</span></div>', unsafe_allow_html=True)
-    st.caption("Automated Tabular Data Extraction Engine")
+    st.caption("Universal Tabular Data Extraction Engine")
     st.markdown("<hr style='border:none; border-top:1px solid rgba(255,255,255,0.08); margin:12px 0;'>", unsafe_allow_html=True)
     
     st.markdown("<div style='font-size:0.8rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:#94a3b8; margin-bottom:10px;'>Core Capabilities</div>", unsafe_allow_html=True)
     
     sidebar_items_html = (
-        '<div class="sidebar-item"><div class="sidebar-title">⚡ Instant Image Optimizer</div>'
-        '<div class="sidebar-desc">Rapid OCR for handwritten registers and multi-page tables.</div></div>'
+        '<div class="sidebar-item"><div class="sidebar-title">⚡ Universal OCR Vision</div>'
+        '<div class="sidebar-desc">Extracts tables from invoices, registers, ledgers, and receipts.</div></div>'
         '<div class="sidebar-item"><div class="sidebar-title">🗃️ Multi-Table Isolation</div>'
         '<div class="sidebar-desc">Guaranteed distinct tabs for each uploaded page/table.</div></div>'
         '<div class="sidebar-item"><div class="sidebar-title">🧹 Auto-Sanitization & Styling</div>'
@@ -461,9 +448,19 @@ def prepare_image(raw_bytes):
     out.seek(0)
     return Image.open(out)
 
-# Enterprise OpenPyXL Workbook Formatter
-def format_excel_workbook(writer):
-    workbook = writer.book
+# Universal Column Normalization (Harmonizes serial numbers while preserving arbitrary custom headers)
+def normalize_column_header(col_name):
+    c = str(col_name).strip()
+    c_clean = re.sub(r'[^\w\s]', '', c).lower()
+    
+    if c_clean in ['no', 'sr no', 'srno', 'sl no', 'slno', 's no', 'sno', 'serial no', 'serial number']:
+        return 'SL. NO.'
+    return c.upper()
+
+# Enterprise OpenPyXL Workbook Builder with Strict Universal Formats
+def generate_styled_excel_workbook(sheets_map):
+    wb = openpyxl.Workbook()
+    wb.remove(wb.active)
     
     header_font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
     header_fill = PatternFill(start_color="107C41", end_color="107C41", fill_type="solid")
@@ -477,32 +474,33 @@ def format_excel_workbook(writer):
     )
     zebra_fill = PatternFill(start_color="F9FAFB", end_color="F9FAFB", fill_type="solid")
     
-    for sheet_name in workbook.sheetnames:
-        ws = workbook[sheet_name]
+    for title, df in sheets_map.items():
+        ws = wb.create_sheet(title=title[:31])
         ws.views.sheetView[0].showGridLines = True
         
-        # Style Header Row
+        headers = list(df.columns)
+        ws.append(headers)
         ws.row_dimensions[1].height = 26
-        for col_num in range(1, ws.max_column + 1):
-            cell = ws.cell(row=1, column=col_num)
+        
+        for col_idx in range(1, len(headers) + 1):
+            cell = ws.cell(row=1, column=col_idx)
             cell.font = header_font
             cell.fill = header_fill
             cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
             cell.border = thin_border
-        
-        # Style Data Rows
-        for row_num in range(2, ws.max_row + 1):
-            is_even = (row_num % 2 == 0)
-            ws.row_dimensions[row_num].height = 20
-            for col_num in range(1, ws.max_column + 1):
-                cell = ws.cell(row=row_num, column=col_num)
-                if cell.value is None or str(cell.value).strip().lower() in ["none", "nan"]:
-                    cell.value = ""
+            
+        for r_idx, row in enumerate(df.itertuples(index=False), start=2):
+            ws.row_dimensions[r_idx].height = 20
+            is_even = (r_idx % 2 == 0)
+            for col_idx, val in enumerate(row, start=1):
+                cell = ws.cell(row=r_idx, column=col_idx)
+                val_clean = "" if pd.isna(val) or str(val).strip().lower() in ["none", "nan", "null"] else str(val).strip()
+                cell.value = val_clean
                 cell.font = regular_font
                 cell.border = thin_border
                 
-                val_str = str(cell.value or "").strip()
-                if val_str.isdigit() and len(val_str) < 5:
+                # Center serial numbers; left align text
+                if (val_clean.isdigit() and len(val_clean) < 5) or headers[col_idx-1] == 'SL. NO.':
                     cell.alignment = Alignment(horizontal="center", vertical="center")
                 else:
                     cell.alignment = Alignment(horizontal="left", vertical="center")
@@ -510,46 +508,49 @@ def format_excel_workbook(writer):
                 if is_even:
                     cell.fill = zebra_fill
                     
-        # Auto-adjust column widths
         for col in ws.columns:
             max_len = 0
             col_letter = get_column_letter(col[0].column)
             for cell in col:
-                val = str(cell.value or "")
-                if len(val) > max_len:
-                    max_len = len(val)
+                val_s = str(cell.value or "")
+                if len(val_s) > max_len:
+                    max_len = len(val_s)
             ws.column_dimensions[col_letter].width = max(max_len + 4, 14)
+            
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
 
-# Multi-Model Resilient Cascade
+# Universal Multi-Model Extraction Cascade
 def execute_extraction_cascade(files_data, key_str):
     genai.configure(api_key=key_str)
     
     prompt = """
-    You are an expert Enterprise Data Engineer and Senior Operations Analyst.
-    Extract all tabular data from the uploaded file(s) with maximum accuracy, cleaning, and structure (including handwritten registers and field rosters):
-    
-    1. EXTRACT ALL DISTINCT TABLES:
-       - Transcribe every row, column header, serial number, employee/contact name, reporting manager, phone number(s), state, and remarks.
-       - Clean values: If a cell is empty or has noise, make it an empty string "". Do NOT write literal "None" or "NaN".
-       - Standardize headers across pages (e.g. use "NO.", "EMPLOYEE NAME", "REPORTING MANAGER", "PHONE", "STATE", "REMARKS").
-       - Separate distinct pages or sheets into distinct tables with descriptive titles (e.g. "Employee Register - Page 1", "Employee Register - Page 2").
-       
-    2. COMPREHENSIVE EXECUTIVE BUSINESS SUMMARY:
-       - Write a clear, structured executive summary in clean Markdown.
-       - Include:
-         * 📌 **Document Scope**: Brief explanation of what this data represents.
-         * 📊 **Operational Metrics**: Total records parsed, managers count, geographic regions covered.
-         * 🔍 **Key Observations & Action Items**: Connectivity issues, remarks summary (e.g., unreachable numbers, switch-offs).
+    You are an expert Data Engineer and OCR Analyst.
+    Extract all tabular information from the uploaded file(s) with high fidelity and precision:
+
+    1. TABLE EXTRACTION (Domain Agnostic):
+       - Accurately identify all distinct tables across all uploaded pages and files (e.g., invoices, ledgers, registers, bills, spreadsheets).
+       - Accurately preserve and transcribe the authentic column headers present in the document.
+       - Clean values: If a cell is blank or unreadable, return an empty string "". Do NOT write literal "None" or "NaN".
+       - Assign an intuitive, descriptive title for each table/sheet (e.g. "Invoice Breakdown", "Page 1 - Ledger", "Attendance Roster").
+
+    2. EXECUTIVE SUMMARY:
+       - Provide a concise, structured business summary of the extracted data in Markdown format:
+         * 📌 **Document Type & Scope**: What type of document this is.
+         * 📊 **Key Metrics & Statistics**: Total record count, key numeric totals or categories.
+         * 🔍 **Observations**: Any noteworthy trends, missing fields, or exceptions.
 
     Return output strictly as valid JSON matching this schema:
     {
-      "analysis": "Structured summary text.",
+      "analysis": "Structured summary text in Markdown with bold headers and bullet points.",
       "tables": [
         {
-          "table_name": "Employee Register - Page 1",
-          "headers": ["NO.", "EMPLOYEE NAME", "REPORTING MANAGER", "PHONE", "STATE", "REMARKS"],
+          "table_name": "Table Name",
+          "headers": ["Header 1", "Header 2", "Header 3"],
           "rows": [
-            ["1", "John Doe", "Jane Smith", "9876543210", "ASSAM", "Active"]
+            ["Row1 Col1", "Row1 Col2", "Row1 Col3"],
+            ["Row2 Col1", "Row2 Col2", "Row2 Col3"]
           ]
         }
       ]
@@ -589,22 +590,6 @@ def execute_extraction_cascade(files_data, key_str):
             continue
 
     raise Exception(f"Extraction failed across models. Last Error: {last_err}")
-
-# Unique Sheet Name Generator
-def create_unique_sheet_name(raw_name, index, seen_set):
-    clean = "".join(c for c in raw_name if c.isalnum() or c in (' ', '_', '-')).strip()
-    clean = clean.replace('_', ' ')
-    if not clean:
-        clean = f"Page {index+1}"
-    base_name = f"Sheet {index+1} - {clean[:16]}".strip()
-    candidate = base_name[:31]
-    count = 1
-    while candidate in seen_set:
-        suffix = f" ({count})"
-        candidate = base_name[:31 - len(suffix)] + suffix
-        count += 1
-    seen_set.add(candidate)
-    return candidate
 
 # Pop-up Document Lightbox Modal
 @st.dialog("📄 Document Preview", width="large")
@@ -654,18 +639,16 @@ if uploaded_files:
             st.subheader("⚡ Convert to Excel")
             st.caption(f"Extract and compile all {len(uploaded_files)} file(s) into a unified multi-sheet Excel spreadsheet.")
             
-            # Action Trigger Container
             extract_clicked = st.button("🚀 Extract Tables & Convert to Excel", type="primary", use_container_width=True)
             loader_container = st.empty()
             
             if extract_clicked:
-                # Active Glassmorphism Processing Card
                 loader_html = """
                 <div class="glass-loading-card">
                     <div class="spinner-radar-ring"></div>
                     <div class="glass-loading-title">AI Vision Processing & Formatting</div>
                     <div class="glass-loading-desc">
-                        Analyzing visual matrix, isolating distinct tabular rows, sanitizing phone numbers & structuring your multi-sheet Excel workbook.
+                        Analyzing visual matrix, isolating distinct tabular rows, sanitizing values & structuring your multi-sheet Excel workbook.
                     </div>
                     <div class="status-pills-row">
                         <span class="status-pill">🔍 OCR Matrix Scan</span>
@@ -707,20 +690,21 @@ if "extracted_data" in st.session_state:
         st.subheader("✏️ Review & Customize Your Extracted Excel")
         st.caption("Edit and refine your displayed Excel tables below according to your work needs. You can double-click any cell to modify values, add new rows (+), search (🔍), or hide columns (👁) before downloading your final workbook.")
         
-        edited_dfs = {}
+        normalized_dfs = {}
         for idx, tbl in enumerate(tables):
-            table_name = tbl.get("table_name", f"Table_{idx+1}")
+            table_name = tbl.get("table_name", f"Table {idx+1}")
             headers = tbl.get("headers", [])
             rows = tbl.get("rows", [])
             
             cleaned_rows = []
             for r in rows:
-                cleaned_rows.append([("" if val is None or str(val).strip() in ["None", "NaN", "nan"] else str(val).strip()) for val in r])
+                cleaned_rows.append([("" if val is None or str(val).strip() in ["None", "NaN", "nan", "null"] else str(val).strip()) for val in r])
                 
             df = pd.DataFrame(cleaned_rows, columns=headers if headers else None)
             df.fillna("", inplace=True)
             
-            # Clean Table Title with HTML badge
+            df = df.rename(columns={c: normalize_column_header(c) for c in df.columns})
+            
             badge_html = f'''
             <div style="display:flex; align-items:center; gap:12px; margin-top:1.8rem; margin-bottom:0.75rem;">
                 <span style="font-size:1.25rem; font-weight:700; color:#ffffff; font-family:'Space Grotesk', sans-serif;">📊 {table_name}</span>
@@ -729,7 +713,6 @@ if "extracted_data" in st.session_state:
             '''
             st.markdown(badge_html, unsafe_allow_html=True)
             
-            # Interactive Data Editor with styled persistent toolbar
             edited_df = st.data_editor(
                 df, 
                 key=f"editor_{idx}", 
@@ -737,36 +720,37 @@ if "extracted_data" in st.session_state:
                 use_container_width=True,
                 height=min(450, 45 + len(df) * 35)
             )
-            edited_dfs[table_name] = edited_df
+            normalized_dfs[table_name] = edited_df
 
-        # Multi-Tab Styled Excel Workbook Generator (Single Master Output)
-        excel_buffer = io.BytesIO()
-        seen_sheets = set()
-        with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
-            # If multiple pages exist, create a Master Consolidated Tab
-            if len(edited_dfs) > 1:
-                try:
-                    combined_df = pd.concat(list(edited_dfs.values()), ignore_index=True)
-                    combined_df.fillna("", inplace=True)
-                    combined_df.to_excel(writer, sheet_name="Master Combined Records", index=False)
-                    seen_sheets.add("Master Combined Records")
-                except Exception:
-                    pass
+        # Generate Unified Multi-Sheet Excel Map with Master Consolidated Records
+        sheets_for_workbook = {}
+        if len(normalized_dfs) > 1:
+            try:
+                # Merge into Master Combined Records
+                combined_df = pd.concat(list(normalized_dfs.values()), ignore_index=True)
+                combined_df.dropna(how='all', inplace=True)
+                combined_df.fillna("", inplace=True)
+                
+                # Continuous sequential serial numbers 1..N
+                if 'SL. NO.' in combined_df.columns:
+                    combined_df['SL. NO.'] = [str(i) for i in range(1, len(combined_df) + 1)]
+                    
+                sheets_for_workbook["Master Combined Records"] = combined_df
+            except Exception:
+                pass
+
+        for name, df in normalized_dfs.items():
+            clean_name = "".join(c for c in name if c.isalnum() or c in (' ', '_', '-')).strip()
+            sheets_for_workbook[clean_name[:31]] = df
             
-            for idx, (name, df) in enumerate(edited_dfs.items()):
-                sheet_title = create_unique_sheet_name(name, idx, seen_sheets)
-                df.to_excel(writer, sheet_name=sheet_title, index=False)
-                
-            format_excel_workbook(writer)
-                
-        excel_data = excel_buffer.getvalue()
+        excel_data = generate_styled_excel_workbook(sheets_for_workbook)
 
         # Final Download Action Section
         st.markdown("---")
         st.markdown("### 📥 Download Final Excel Workbook")
         st.caption("Click below to download your complete, customized spreadsheet (.xlsx) containing all edited tabs and the master summary sheet.")
         
-        button_label = "📥 Download Final Excel Workbook (.xlsx)" if len(edited_dfs) == 1 else f"📥 Download Final Multi-Sheet Excel Workbook ({len(edited_dfs)} Sheets + Master Tab)"
+        button_label = "📥 Download Final Excel Workbook (.xlsx)" if len(normalized_dfs) == 1 else f"📥 Download Final Multi-Sheet Excel Workbook ({len(normalized_dfs)} Sheets + Master Tab)"
         
         st.download_button(
             label=button_label,
