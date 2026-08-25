@@ -6,6 +6,9 @@ import os
 from PIL import Image
 from pypdf import PdfReader
 import google.generativeai as genai
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
 
 # Page Configuration
 st.set_page_config(
@@ -142,19 +145,25 @@ h1, h2, h3 {
     margin-bottom: 1rem;
 }
 
-/* Green Download Button */
-.stDownloadButton > button {
-    background: linear-gradient(135deg, #16a34a 0%, #15803d 100%) !important;
-    color: #ffffff !important;
-    font-weight: 600 !important;
-    border: none !important;
-    border-radius: 10px !important;
-    padding: 0.65rem 1.75rem !important;
-    box-shadow: 0 0 20px rgba(22, 163, 74, 0.4) !important;
+.table-header-card {
+    background: rgba(17, 24, 39, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px 12px 0 0;
+    padding: 1rem 1.25rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1.5rem;
 }
-.stDownloadButton > button:hover {
-    transform: translateY(-2px) !important;
-    box-shadow: 0 0 28px rgba(22, 163, 74, 0.65) !important;
+
+.summary-container {
+    background: rgba(17, 24, 39, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 1.5rem;
+    margin-top: 1rem;
+    margin-bottom: 1.5rem;
+    line-height: 1.6;
 }
 
 .stButton > button[kind="primary"] {
@@ -194,12 +203,12 @@ with st.sidebar:
         '<div class="sidebar-desc">Rapid OCR for handwritten registers and multi-page tables.</div></div>'
         '<div class="sidebar-item"><div class="sidebar-title">🗃️ Multi-Table Isolation</div>'
         '<div class="sidebar-desc">Guaranteed distinct tabs for each uploaded page/table.</div></div>'
-        '<div class="sidebar-item"><div class="sidebar-title">🧹 Number Sanitization</div>'
-        '<div class="sidebar-desc">Removes noise and prepares numbers for immediate formulas.</div></div>'
+        '<div class="sidebar-item"><div class="sidebar-title">🧹 Auto-Sanitization & Styling</div>'
+        '<div class="sidebar-desc">Removes artifacts, auto-fits columns & formats Excel sheets.</div></div>'
         '<div class="sidebar-item"><div class="sidebar-title">✏️ In-Browser Data Grid</div>'
         '<div class="sidebar-desc">Double-click cells to adjust values before downloading.</div></div>'
         '<div class="sidebar-item"><div class="sidebar-title">📥 Native .xlsx Generator</div>'
-        '<div class="sidebar-desc">Multi-sheet Excel workbook with combined data master tab.</div></div>'
+        '<div class="sidebar-desc">Multi-sheet Excel workbook with formatted master tab.</div></div>'
     )
     st.markdown(sidebar_items_html, unsafe_allow_html=True)
     st.markdown("<hr style='border:none; border-top:1px solid rgba(255,255,255,0.08); margin:12px 0;'>", unsafe_allow_html=True)
@@ -235,14 +244,14 @@ with col_card3:
     card3_html = (
         '<div class="feature-card card-anim-3">'
         '<div style="font-size: 1.15rem; font-weight:700; color:#a78bfa; margin-bottom:4px;">3. Download Excel</div>'
-        '<div style="font-size:0.85rem; color:#94a3b8; line-height:1.4;">Get a clean multi-sheet Excel file (.xlsx) ready for use.</div>'
+        '<div style="font-size:0.85rem; color:#94a3b8; line-height:1.4;">Get a styled multi-sheet Excel file (.xlsx) ready for use.</div>'
         '</div>'
     )
     st.markdown(card3_html, unsafe_allow_html=True)
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# Fast In-Memory Image Resizer (1600px optimal dimension for sub-second network transfers)
+# Fast In-Memory Image Resizer (1600px optimal dimension for fast API transfer)
 def prepare_image(raw_bytes):
     img = Image.open(io.BytesIO(raw_bytes))
     if img.mode != "RGB":
@@ -255,31 +264,97 @@ def prepare_image(raw_bytes):
     out.seek(0)
     return Image.open(out)
 
-# Multi-Model Resilient Cascade (Falls back seamlessly if one model hits quota)
+# Enterprise OpenPyXL Workbook Formatter
+def format_excel_workbook(writer, df_dict):
+    workbook = writer.book
+    
+    # Styles
+    header_font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
+    header_fill = PatternFill(start_color="107C41", end_color="107C41", fill_type="solid")
+    regular_font = Font(name="Calibri", size=10, color="1F2937")
+    
+    thin_border = Border(
+        left=Side(style='thin', color='E5E7EB'),
+        right=Side(style='thin', color='E5E7EB'),
+        top=Side(style='thin', color='E5E7EB'),
+        bottom=Side(style='thin', color='E5E7EB')
+    )
+    
+    zebra_fill = PatternFill(start_color="F9FAFB", end_color="F9FAFB", fill_type="solid")
+    
+    for sheet_name in workbook.sheetnames:
+        ws = workbook[sheet_name]
+        ws.views.sheetView[0].showGridLines = True
+        
+        # Style Header Row
+        for col_num in range(1, ws.max_column + 1):
+            cell = ws.cell(row=1, column=col_num)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+            cell.border = thin_border
+        
+        ws.row_dimensions[1].height = 28
+        
+        # Style Data Rows
+        for row_num in range(2, ws.max_row + 1):
+            is_even = (row_num % 2 == 0)
+            ws.row_dimensions[row_num].height = 20
+            for col_num in range(1, ws.max_column + 1):
+                cell = ws.cell(row=row_num, column=col_num)
+                cell.font = regular_font
+                cell.border = thin_border
+                
+                # Check for numerical alignment vs text
+                val_str = str(cell.value or "").strip()
+                if val_str.isdigit() and len(val_str) < 5:
+                    cell.alignment = Alignment(horizontal="center", vertical="center")
+                else:
+                    cell.alignment = Alignment(horizontal="left", vertical="center")
+                    
+                if is_even:
+                    cell.fill = zebra_fill
+                    
+        # Auto-adjust column widths
+        for col in ws.columns:
+            max_len = 0
+            col_letter = get_column_letter(col[0].column)
+            for cell in col:
+                val = str(cell.value or "")
+                if len(val) > max_len:
+                    max_len = len(val)
+            ws.column_dimensions[col_letter].width = max(max_len + 4, 12)
+
+# Multi-Model Resilient Cascade with Detailed Business Summary
 def execute_extraction_cascade(files_data, key_str):
     genai.configure(api_key=key_str)
     
     prompt = """
-    You are an expert Data Specialist and OCR Analyst.
-    Extract all tabular data from the uploaded file(s) accurately and rapidly (including handwritten registers):
+    You are an expert Enterprise Data Engineer and Senior Operations Analyst.
+    Extract all tabular data from the uploaded file(s) with maximum accuracy, cleaning, and structure (including handwritten registers and field rosters):
     
     1. EXTRACT ALL DISTINCT TABLES:
-       - Transcribe every row, column header, serial number, name, phone number, and remark accurately.
-       - Separate distinct pages or sections into distinct tables with descriptive titles (e.g. Page 1 Register, Page 2 Register).
+       - Transcribe every row, column header, serial number, employee/contact name, reporting manager, phone number(s), state, and remarks.
+       - Clean values: If a cell is empty or has illegible noise, make it an empty string "". Do NOT write literal "None" or "NaN".
+       - Format phone numbers cleanly as readable strings (e.g. "9864954341" or "8794235049 / 8787565924").
+       - Separate distinct pages or distinct sheets into clearly titled tables (e.g. "Employee Register - Page 1", "Employee Register - Page 2").
        
-    2. EXECUTIVE SUMMARY:
-       - Give a 2-3 line concise summary of the data contents and total record count across all pages.
+    2. COMPREHENSIVE EXECUTIVE BUSINESS SUMMARY:
+       - Write a clear, structured, and easy-to-read business breakdown in Markdown.
+       - Include:
+         * 📌 **Document Scope**: What type of document this is (e.g., Regional Field Staff Directory, Attendance Register).
+         * 📊 **Operational Metrics**: Total records parsed, count of reporting managers, geographic regions covered.
+         * 🔍 **Key Observations & Action Items**: Notable remarks (e.g., unreachable numbers, switch off, pending confirmations).
 
     Return output strictly as valid JSON matching this schema:
     {
-      "analysis": "Short executive summary.",
+      "analysis": "Structured Markdown executive summary with bullet points and bold section titles.",
       "tables": [
         {
-          "table_name": "Page 1 - Register",
-          "headers": ["Col 1", "Col 2", "Col 3"],
+          "table_name": "Employee Register - Page 1",
+          "headers": ["SR. NO.", "EMPLOYEE NAME", "REPORTING MANAGER", "PHONE", "STATE", "REMARKS"],
           "rows": [
-            ["Row1 Col1", "Row1 Col2", "Row1 Col3"],
-            ["Row2 Col1", "Row2 Col2", "Row2 Col3"]
+            ["1", "John Doe", "Jane Smith", "9876543210", "ASSAM", "Active"]
           ]
         }
       ]
@@ -297,7 +372,6 @@ def execute_extraction_cascade(files_data, key_str):
             
     contents.append(prompt)
 
-    # Priority cascade list
     model_cascade = ["gemini-3.6-flash", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash-latest"]
     
     last_err = None
@@ -321,13 +395,13 @@ def execute_extraction_cascade(files_data, key_str):
 
     raise Exception(f"Extraction failed across models. Last Error: {last_err}")
 
-# Unique Sheet Name Generator (Fixes the 30-char tab collision bug)
+# Unique Sheet Name Generator
 def create_unique_sheet_name(raw_name, index, seen_set):
     clean = "".join(c for c in raw_name if c.isalnum() or c in (' ', '_', '-')).strip()
     clean = clean.replace('_', ' ')
     if not clean:
         clean = f"Table {index+1}"
-    base_name = f"Sheet {index+1} - {clean[:18]}".strip()
+    base_name = f"Sheet {index+1} - {clean[:16]}".strip()
     candidate = base_name[:31]
     count = 1
     while candidate in seen_set:
@@ -336,6 +410,16 @@ def create_unique_sheet_name(raw_name, index, seen_set):
         count += 1
     seen_set.add(candidate)
     return candidate
+
+# Generate Single-Sheet Styled Excel Buffer
+def create_single_styled_excel(df, sheet_title="Extracted Table"):
+    buf = io.BytesIO()
+    seen = set()
+    safe_title = create_unique_sheet_name(sheet_title, 0, seen)
+    with pd.ExcelWriter(buf, engine='openpyxl') as writer:
+        df.to_excel(writer, sheet_name=safe_title, index=False)
+        format_excel_workbook(writer, {safe_title: df})
+    return buf.getvalue()
 
 # Document Upload Section with Multiple File Support
 uploaded_files = st.file_uploader(
@@ -367,7 +451,7 @@ if uploaded_files:
             st.subheader("⚡ Convert to Excel")
             st.caption(f"Extract and compile all {len(uploaded_files)} file(s) into a unified multi-sheet Excel spreadsheet.")
             if st.button("🚀 Extract Tables & Convert to Excel", type="primary", use_container_width=True):
-                with st.spinner("Extracting tabular data across all files..."):
+                with st.spinner("Extracting tabular data and applying Excel formatting..."):
                     try:
                         raw_json_str, used_model = execute_extraction_cascade(files_data, api_key)
                         data = json.loads(raw_json_str)
@@ -382,16 +466,17 @@ if "extracted_data" in st.session_state:
     data = st.session_state["extracted_data"]
     
     st.markdown("---")
-    st.subheader("💡 Key Summary & Insights")
-    st.markdown(data.get("analysis", "No summary provided."))
+    st.markdown("### 💡 Executive Summary & Business Insights")
+    
+    summary_text = data.get("analysis", "No detailed analysis generated.")
+    st.markdown(f'<div class="summary-container">{summary_text}</div>', unsafe_allow_html=True)
     
     tables = data.get("tables", [])
     if not tables:
         st.warning("No tables found in the uploaded file(s).")
     else:
-        st.markdown("---")
-        st.subheader("✏️ Review & Edit Tables")
-        st.caption("Double-click any cell below to fix any typos before downloading.")
+        st.markdown("### ✏️ Review, Edit & Export Tables")
+        st.caption("Double-click any cell below to modify names, phone numbers, or remarks. Your edits will be included in the downloaded Excel files.")
         
         edited_dfs = {}
         for idx, tbl in enumerate(tables):
@@ -399,20 +484,61 @@ if "extracted_data" in st.session_state:
             headers = tbl.get("headers", [])
             rows = tbl.get("rows", [])
             
-            df = pd.DataFrame(rows, columns=headers if headers else None)
+            # Clean empty or None values
+            cleaned_rows = []
+            for r in rows:
+                cleaned_rows.append([("" if val is None or str(val).strip() == "None" else str(val).strip()) for val in r])
+                
+            df = pd.DataFrame(cleaned_rows, columns=headers if headers else None)
+            df.fillna("", inplace=True)
             
-            st.markdown(f"#### 📊 {table_name}")
-            edited_df = st.data_editor(df, key=f"editor_{idx}", num_rows="dynamic", use_container_width=True)
+            # Per-Table Action Header Bar
+            col_t_title, col_t_excel, col_t_csv = st.columns([3, 1.2, 0.8])
+            with col_t_title:
+                st.markdown(f"#### 📊 {table_name} &nbsp; `<span style='font-size:0.8rem; background:rgba(34,197,94,0.15); color:#4ade80; padding:2px 8px; border-radius:6px;'>{len(df)} Records</span>`", unsafe_allow_html=True)
+            
+            # Interactive In-Browser Editable Grid
+            edited_df = st.data_editor(
+                df, 
+                key=f"editor_{idx}", 
+                num_rows="dynamic", 
+                use_container_width=True,
+                height=min(400, 45 + len(df) * 35)
+            )
             edited_dfs[table_name] = edited_df
+            
+            # Per-Table Direct Export Buttons
+            with col_t_excel:
+                single_excel_bytes = create_single_styled_excel(edited_df, table_name)
+                st.download_button(
+                    label=f"📥 Download Sheet (.xlsx)",
+                    data=single_excel_bytes,
+                    file_name=f"{table_name.lower().replace(' ', '_')}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key=f"dl_single_xlsx_{idx}",
+                    use_container_width=True
+                )
+            with col_t_csv:
+                single_csv_bytes = edited_df.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    label=f"📄 CSV",
+                    data=single_csv_bytes,
+                    file_name=f"{table_name.lower().replace(' ', '_')}.csv",
+                    mime="text/csv",
+                    key=f"dl_single_csv_{idx}",
+                    use_container_width=True
+                )
+            
+            st.markdown("<br>", unsafe_allow_html=True)
 
-        # Multi-Tab Excel Generator with Unique Sheet Naming & Master Consolidated Sheet
+        # Multi-Tab Styled Excel Workbook Generator
         excel_buffer = io.BytesIO()
         seen_sheets = set()
         with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
-            # If multiple tables share similar structure, also prepend a master 'All Records' sheet
             if len(edited_dfs) > 1:
                 try:
                     combined_df = pd.concat(list(edited_dfs.values()), ignore_index=True)
+                    combined_df.fillna("", inplace=True)
                     combined_df.to_excel(writer, sheet_name="All Combined Records", index=False)
                     seen_sheets.add("All Combined Records")
                 except Exception:
@@ -422,35 +548,29 @@ if "extracted_data" in st.session_state:
                 sheet_title = create_unique_sheet_name(name, idx, seen_sheets)
                 df.to_excel(writer, sheet_name=sheet_title, index=False)
                 
+            format_excel_workbook(writer, edited_dfs)
+                
         excel_data = excel_buffer.getvalue()
 
+        # Master Global Download Bar
         st.markdown("---")
+        st.markdown("#### 📦 Master Export (All Pages & Consolidated Data)")
         c1, c2 = st.columns(2)
         with c1:
             st.download_button(
-                label=f"📥 Download Multi-Sheet Excel Workbook ({len(edited_dfs)} Sheets)",
+                label=f"📥 Download Unified Styled Excel Workbook ({len(edited_dfs)} Sheets + Master Tab)",
                 data=excel_data,
-                file_name="sheetgen_multi_sheet_extracted.xlsx",
+                file_name="sheetgen_master_workbook.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                type="primary",
                 use_container_width=True
             )
         with c2:
-            if len(edited_dfs) == 1:
-                first_df = list(edited_dfs.values())[0]
-                csv_data = first_df.to_csv(index=False).encode('utf-8')
-                st.download_button(
-                    label="📥 Download Flat CSV (.csv)",
-                    data=csv_data,
-                    file_name="sheetgen_extracted_table.csv",
-                    mime="text/csv",
-                    use_container_width=True
-                )
-            else:
-                combined_csv = pd.concat(list(edited_dfs.values()), ignore_index=True).to_csv(index=False).encode('utf-8')
-                st.download_button(
-                    label="📥 Download All Combined Data (.csv)",
-                    data=combined_csv,
-                    file_name="sheetgen_all_combined.csv",
-                    mime="text/csv",
-                    use_container_width=True
-                )
+            combined_csv = pd.concat(list(edited_dfs.values()), ignore_index=True).fillna("").to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📥 Download All Combined Records (.csv)",
+                data=combined_csv,
+                file_name="sheetgen_master_all_records.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
