@@ -21,7 +21,7 @@ st.set_page_config(
 # Fetch API Key silently from Streamlit Secrets or Environment
 api_key = st.secrets.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY", "")
 
-# Modern Dark Theme, Universal Dark Mode Lock & Motion UI CSS
+# Modern Dark Theme, Universal Dark Mode Lock & Glassmorphic UI CSS
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap');
@@ -188,7 +188,6 @@ div[data-testid="stFileUploader"]:hover {
     transform: translateY(-2px);
 }
 
-/* File Uploader Label Styling */
 div[data-testid="stFileUploader"] label {
     font-size: 1.12rem !important;
     font-weight: 700 !important;
@@ -197,7 +196,6 @@ div[data-testid="stFileUploader"] label {
     margin-bottom: 0.6rem !important;
 }
 
-/* Styled Inner Upload Button */
 div[data-testid="stFileUploader"] section button {
     background: linear-gradient(135deg, #107C41 0%, #15803d 100%) !important;
     color: #ffffff !important;
@@ -209,9 +207,99 @@ div[data-testid="stFileUploader"] section button {
     transition: all 0.2s ease-in-out !important;
 }
 
-div[data-testid="stFileUploader"] section button:hover {
-    transform: scale(1.05) !important;
-    box-shadow: 0 6px 22px rgba(16, 124, 65, 0.7) !important;
+/* =========================================================
+   GLASSMORPHISM AI LOADING ANIMATION CARD
+   ========================================================= */
+@keyframes pulseGlassGlow {
+    0% {
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 18px rgba(34, 197, 94, 0.2);
+        border-color: rgba(34, 197, 94, 0.35);
+    }
+    50% {
+        box-shadow: 0 14px 44px rgba(0, 0, 0, 0.75), 0 0 36px rgba(34, 197, 94, 0.6);
+        border-color: rgba(34, 197, 94, 0.9);
+    }
+    100% {
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 18px rgba(34, 197, 94, 0.2);
+        border-color: rgba(34, 197, 94, 0.35);
+    }
+}
+
+@keyframes spinRadarRing {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes shimmerGlowText {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+
+.glass-loading-card {
+    background: rgba(15, 23, 42, 0.85) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    border: 1.5px solid rgba(34, 197, 94, 0.55) !important;
+    border-radius: 18px !important;
+    padding: 2rem 2.2rem !important;
+    margin: 1.5rem 0 !important;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    animation: pulseGlassGlow 2.5s infinite ease-in-out;
+}
+
+.spinner-radar-ring {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: 3.5px solid rgba(255, 255, 255, 0.08);
+    border-top: 3.5px solid #22c55e;
+    border-right: 3.5px solid #38bdf8;
+    animation: spinRadarRing 1.1s linear infinite;
+    margin-bottom: 14px;
+}
+
+.glass-loading-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 700;
+    background: linear-gradient(90deg, #ffffff 0%, #4ade80 50%, #ffffff 100%);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: shimmerGlowText 3s linear infinite;
+    margin-bottom: 8px;
+}
+
+.glass-loading-desc {
+    font-size: 0.92rem;
+    color: #94a3b8;
+    max-width: 540px;
+    line-height: 1.5;
+    margin-bottom: 16px;
+}
+
+.status-pills-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+}
+
+.status-pill {
+    font-size: 0.78rem;
+    font-weight: 600;
+    background: rgba(34, 197, 94, 0.14);
+    color: #4ade80;
+    border: 1px solid rgba(34, 197, 94, 0.35);
+    padding: 5px 14px;
+    border-radius: 9999px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
 }
 
 /* ENLARGED & PERMANENTLY VISIBLE DATA EDITOR ACTION TOOLBAR */
@@ -565,16 +653,40 @@ if uploaded_files:
         with col_action:
             st.subheader("⚡ Convert to Excel")
             st.caption(f"Extract and compile all {len(uploaded_files)} file(s) into a unified multi-sheet Excel spreadsheet.")
-            if st.button("🚀 Extract Tables & Convert to Excel", type="primary", use_container_width=True):
-                with st.spinner("Extracting tabular data and formatting Excel sheets..."):
-                    try:
-                        raw_json_str, used_model = execute_extraction_cascade(files_data, api_key)
-                        data = json.loads(raw_json_str)
-                        st.session_state["extracted_data"] = data
-                        st.session_state["model_used"] = used_model
-                        st.toast(f"Extracted successfully via {used_model}!", icon="⚡")
-                    except Exception as e:
-                        st.error(f"Processing Error: {e}")
+            
+            # Action Trigger Container
+            extract_clicked = st.button("🚀 Extract Tables & Convert to Excel", type="primary", use_container_width=True)
+            loader_container = st.empty()
+            
+            if extract_clicked:
+                # Active Glassmorphism Processing Card
+                loader_html = """
+                <div class="glass-loading-card">
+                    <div class="spinner-radar-ring"></div>
+                    <div class="glass-loading-title">AI Vision Processing & Formatting</div>
+                    <div class="glass-loading-desc">
+                        Analyzing visual matrix, isolating distinct tabular rows, sanitizing phone numbers & structuring your multi-sheet Excel workbook.
+                    </div>
+                    <div class="status-pills-row">
+                        <span class="status-pill">🔍 OCR Matrix Scan</span>
+                        <span class="status-pill">🧹 Noise Sanitization</span>
+                        <span class="status-pill">📑 Table Structuring</span>
+                        <span class="status-pill">📊 .xlsx Synthesis</span>
+                    </div>
+                </div>
+                """
+                loader_container.markdown(loader_html, unsafe_allow_html=True)
+                
+                try:
+                    raw_json_str, used_model = execute_extraction_cascade(files_data, api_key)
+                    data = json.loads(raw_json_str)
+                    st.session_state["extracted_data"] = data
+                    st.session_state["model_used"] = used_model
+                    loader_container.empty()
+                    st.toast(f"Extracted successfully via {used_model}!", icon="⚡")
+                except Exception as e:
+                    loader_container.empty()
+                    st.error(f"Processing Error: {e}")
 
 # Results Display & Editable Table Grid
 if "extracted_data" in st.session_state:
