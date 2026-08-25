@@ -3,7 +3,6 @@ import pandas as pd
 import io
 import json
 import os
-import re
 from PIL import Image
 from pypdf import PdfReader
 import google.generativeai as genai
@@ -167,38 +166,10 @@ EXCEL_ICON_MAIN = '<svg width="48" height="48" viewBox="0 0 48 48" fill="none" x
 
 EXCEL_ICON_SIDEBAR = '<svg width="28" height="28" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align: middle;"><rect x="14" y="6" width="28" height="36" rx="4" fill="#107C41"/><rect x="23" y="13" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="31" y="13" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="23" y="19" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="31" y="19" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="23" y="25" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="31" y="25" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="23" y="31" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="31" y="31" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="6" y="9" width="22" height="30" rx="3" fill="#185C37"/><path d="M11.5 30L15.3 24L11.8 18H15.2L17 21.5L18.8 18H22.2L18.7 24L22.5 30H19.1L17 26.2L14.9 30H11.5Z" fill="white"/></svg>'
 
-# Instant Cached Active Model Resolver (Runs in 0.05s)
-@st.cache_data(ttl=7200, show_spinner=False)
-def resolve_live_model(key_str):
-    if not key_str:
-        return None
-    try:
-        genai.configure(api_key=key_str)
-        valid = []
-        for m in genai.list_models():
-            methods = getattr(m, 'supported_generation_methods', [])
-            if 'generateContent' in methods:
-                name = m.name.lower()
-                if not any(x in name for x in ['tts', 'embed', 'aqa', 'imagen', 'realtime', 'bison']):
-                    valid.append(m.name)
-        
-        # Sort priority by latest active releases
-        flash_models = [m for m in valid if 'flash' in m.lower()]
-        pro_models = [m for m in valid if 'pro' in m.lower()]
-        
-        if flash_models:
-            return flash_models[0]
-        if pro_models:
-            return pro_models[0]
-        return valid[0] if valid else None
-    except Exception:
-        return None
+# Target Model
+ACTIVE_MODEL_NAME = "gemini-3.6-flash"
 
-# Resolve Live Model Endpoint
-active_model = resolve_live_model(api_key) if api_key else None
-clean_model_display = active_model.replace("models/", "") if active_model else "Connecting..."
-
-# Sidebar Configuration
+# Static Sidebar Configuration
 with st.sidebar:
     st.markdown(f'<div style="display:flex; align-items:center; gap:10px; margin-bottom: 6px;">{EXCEL_ICON_SIDEBAR}<span style="font-size:1.35rem; font-weight:700; color:#ffffff; font-family:\'Space Grotesk\',sans-serif;">SheetGen AI</span></div>', unsafe_allow_html=True)
     st.caption("Automated Tabular Data Extraction Engine")
@@ -220,7 +191,7 @@ with st.sidebar:
     )
     st.markdown(sidebar_items_html, unsafe_allow_html=True)
     st.markdown("<hr style='border:none; border-top:1px solid rgba(255,255,255,0.08); margin:12px 0;'>", unsafe_allow_html=True)
-    st.markdown(f"🟢 **Active Engine:** `{clean_model_display}`")
+    st.markdown(f"🟢 **Active Engine:** `{ACTIVE_MODEL_NAME}`")
 
 # Hero Header
 st.markdown('<div class="status-badge">⚡ Instant Document to Spreadsheet</div>', unsafe_allow_html=True)
@@ -259,23 +230,24 @@ with col_card3:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# Rapid Image Compression (Speeds up upload and processing by 10x)
-def compress_image_fast(raw_bytes):
+# Fast In-Memory Image Resizer
+def prepare_image(raw_bytes):
     img = Image.open(io.BytesIO(raw_bytes))
     if img.mode != "RGB":
         img = img.convert("RGB")
     
+    # Scale large mobile phone images to maximum 1600px edge for instant network transmission
     max_dim = 1600
     if max(img.size) > max_dim:
         img.thumbnail((max_dim, max_dim), Image.Resampling.LANCZOS)
         
     out = io.BytesIO()
-    img.save(out, format="JPEG", quality=82, optimize=True)
+    img.save(out, format="JPEG", quality=85, optimize=True)
     out.seek(0)
     return Image.open(out)
 
-# Fast Extraction Pipeline
-def execute_extraction(files_data, key_str, target_model_name):
+# Fast Extraction Pipeline via Gemini 3.6 Flash
+def execute_extraction(files_data, key_str):
     genai.configure(api_key=key_str)
     
     prompt = """
@@ -308,7 +280,7 @@ def execute_extraction(files_data, key_str, target_model_name):
     contents = []
     for file_bytes, mime_type in files_data:
         if "image" in mime_type:
-            contents.append(compress_image_fast(file_bytes))
+            contents.append(prepare_image(file_bytes))
         elif "pdf" in mime_type:
             reader = PdfReader(io.BytesIO(file_bytes))
             pdf_text = "\n".join([p.extract_text() or "" for p in reader.pages])
@@ -316,14 +288,12 @@ def execute_extraction(files_data, key_str, target_model_name):
             
     contents.append(prompt)
 
-    model = genai.GenerativeModel(target_model_name)
-    try:
-        response = model.generate_content(
-            contents,
-            generation_config={"response_mime_type": "application/json"}
-        )
-    except Exception:
-        response = model.generate_content(contents)
+    # Use gemini-3.6-flash as specified by Google API
+    model = genai.GenerativeModel("gemini-3.6-flash")
+    response = model.generate_content(
+        contents,
+        generation_config={"response_mime_type": "application/json"}
+    )
 
     raw_text = response.text.strip()
     if "```json" in raw_text:
@@ -341,8 +311,8 @@ uploaded_files = st.file_uploader(
 )
 
 if uploaded_files:
-    if not api_key or not active_model:
-        st.error("⚠️ System Error: Unable to bind to Gemini engine. Please verify your GEMINI_API_KEY in Streamlit Secrets.")
+    if not api_key:
+        st.error("⚠️ System Error: GEMINI_API_KEY not found in Streamlit Secrets. Please add it to your app settings.")
     else:
         files_data = []
         for file in uploaded_files:
@@ -363,9 +333,9 @@ if uploaded_files:
             st.subheader("⚡ Convert to Excel")
             st.caption(f"Extract and compile all {len(uploaded_files)} file(s) into a unified Excel spreadsheet.")
             if st.button("🚀 Extract Tables & Convert to Excel", type="primary", use_container_width=True):
-                with st.spinner(f"Extracting tabular data via {clean_model_display}..."):
+                with st.spinner("Extracting tabular data via Gemini 3.6 Flash..."):
                     try:
-                        raw_json_str = execute_extraction(files_data, api_key, active_model)
+                        raw_json_str = execute_extraction(files_data, api_key)
                         data = json.loads(raw_json_str)
                         st.session_state["extracted_data"] = data
                         st.toast("Extracted successfully in seconds!", icon="⚡")
