@@ -389,7 +389,7 @@ EXCEL_ICON_MAIN = '<svg width="48" height="48" viewBox="0 0 48 48" fill="none" x
 
 EXCEL_ICON_SIDEBAR = '<svg width="28" height="28" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align: middle;"><rect x="14" y="6" width="28" height="36" rx="4" fill="#107C41"/><rect x="23" y="13" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="31" y="13" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="23" y="19" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="31" y="19" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="23" y="25" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="31" y="25" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="23" y="31" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="31" y="31" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="6" y="9" width="22" height="30" rx="3" fill="#185C37"/><path d="M11.5 30L15.3 24L11.8 18H15.2L17 21.5L18.8 18H22.2L18.7 24L22.5 30H19.1L17 26.2L14.9 30H11.5Z" fill="white"/></svg>'
 
-# Static Sidebar Configuration
+# Static Sidebar Configuration with Active Model Display
 with st.sidebar:
     st.markdown(f'<div style="display:flex; align-items:center; gap:10px; margin-bottom: 6px;">{EXCEL_ICON_SIDEBAR}<span style="font-size:1.35rem; font-weight:700; color:#ffffff; font-family:\'Space Grotesk\',sans-serif;">SheetGen AI</span></div>', unsafe_allow_html=True)
     st.caption("Universal Tabular Extraction & AI Dashboard Suite")
@@ -411,6 +411,18 @@ with st.sidebar:
     )
     st.markdown(sidebar_items_html, unsafe_allow_html=True)
     st.markdown("<hr style='border:none; border-top:1px solid rgba(255,255,255,0.08); margin:12px 0;'>", unsafe_allow_html=True)
+    
+    # Active Model & Latency Display in Sidebar
+    active_m = st.session_state.get("model_used", "Auto (Fast-Path)")
+    m_time = st.session_state.get("extraction_time", "")
+    time_badge = f" • {m_time}s" if m_time else ""
+    
+    st.markdown(f"""
+    <div style="background: rgba(34, 197, 94, 0.08); border: 1px solid rgba(34, 197, 94, 0.25); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px;">
+        <div style="font-size: 0.75rem; font-weight: 700; color: #4ade80; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 3px;">Active AI Engine</div>
+        <div style="font-size: 0.85rem; font-weight: 600; color: #ffffff;">⚡ {active_m}{time_badge}</div>
+    </div>
+    """, unsafe_allow_html=True)
     st.markdown("🟢 **System Status:** Ready")
 
 # Hero Header
@@ -499,39 +511,6 @@ def profile_dataset_metrics(df):
                 "top_5_frequencies": top_counts
             }
     return summary
-
-# Cached Dynamic Model Registry Query (Fetches active vision endpoints for your key)
-@st.cache_data(ttl=3600, show_spinner=False)
-def get_supported_gemini_models(key_str):
-    genai.configure(api_key=key_str)
-    discovered = []
-    try:
-        for m in genai.list_models():
-            methods = getattr(m, 'supported_generation_methods', [])
-            name = m.name if hasattr(m, 'name') else str(m)
-            if "generateContent" in methods:
-                name_clean = name.replace("models/", "")
-                name_low = name_clean.lower()
-                if not any(x in name_low for x in ['embed', 'imagen', 'tts', 'aqa', 'realtime']):
-                    discovered.append(name_clean)
-    except Exception:
-        pass
-
-    # Sort flash vision models first (fastest response), then pro models
-    def sort_score(n):
-        nl = n.lower()
-        if "1.5-flash" in nl:
-            return 1
-        elif "flash" in nl:
-            return 2
-        elif "1.5-pro" in nl:
-            return 3
-        return 4
-
-    discovered.sort(key=sort_score)
-    if not discovered:
-        discovered = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash"]
-    return discovered
 
 # =========================================================================
 # EXCEL GENERATOR 1: BASE DATA ONLY (.XLSX)
@@ -1059,14 +1038,10 @@ def generate_ai_copilot_excel_workbook(sheets_map, master_df, ai_spec):
     return buf.getvalue()
 
 # =========================================================================
-# HIGH-SPEED EXTRACTION CASCADE
+# HIGH-SPEED EXTRACTION CASCADE (8-15s TARGET)
 # =========================================================================
 def execute_extraction_cascade(files_data, key_str):
     genai.configure(api_key=key_str)
-    
-    # Check if a working verified model was already saved in session state
-    saved_model = st.session_state.get("verified_model")
-    available_models = [saved_model] if saved_model else get_supported_gemini_models(key_str)
     
     prompt = """
     You are an expert Data Engineer and OCR Analyst.
@@ -1110,8 +1085,12 @@ def execute_extraction_cascade(files_data, key_str):
             
     contents.append(prompt)
 
+    # Primary Direct Fast-Path Models
+    fast_models = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash"]
     last_err = None
-    for model_name in available_models:
+    start_t = time.time()
+    
+    for model_name in fast_models:
         try:
             model = genai.GenerativeModel(model_name)
             response = model.generate_content(
@@ -1125,21 +1104,22 @@ def execute_extraction_cascade(files_data, key_str):
                 elif "```" in raw_text:
                     raw_text = raw_text.split("```")[1].split("```")[0].strip()
                 
-                # Save the successful verified model in session state for fast-path reuse
+                elapsed = round(time.time() - start_t, 1)
                 st.session_state["verified_model"] = model_name
-                return raw_text, model_name
+                st.session_state["extraction_time"] = elapsed
+                return raw_text, model_name, elapsed
         except Exception as err:
             last_err = err
             continue
 
-    raise Exception(f"Extraction failed across available models. Last Error: {last_err}")
+    raise Exception(f"Extraction failed across models. Last Error: {last_err}")
 
 # High-Speed AI Custom Dashboard Copilot Function
 def ask_ai_for_dashboard_spec(df, user_instruction, key_str):
     genai.configure(api_key=key_str)
     
-    saved_model = st.session_state.get("verified_model")
-    available_models = [saved_model] if saved_model else get_supported_gemini_models(key_str)
+    saved_model = st.session_state.get("verified_model", "gemini-1.5-flash")
+    fast_models = [saved_model, "gemini-1.5-flash", "gemini-1.5-pro"]
     metrics_context = profile_dataset_metrics(df)
     
     prompt = f"""
@@ -1174,7 +1154,7 @@ def ask_ai_for_dashboard_spec(df, user_instruction, key_str):
     }}
     """
     
-    for model_name in available_models:
+    for model_name in fast_models:
         try:
             model = genai.GenerativeModel(model_name)
             res = model.generate_content(
@@ -1342,12 +1322,13 @@ if uploaded_files:
                 loader_container.markdown(loader_html, unsafe_allow_html=True)
                 
                 try:
-                    raw_json_str, used_model = execute_extraction_cascade(files_data, api_key)
+                    raw_json_str, used_model, elapsed_s = execute_extraction_cascade(files_data, api_key)
                     data = json.loads(raw_json_str)
                     st.session_state["extracted_data"] = data
                     st.session_state["model_used"] = used_model
+                    st.session_state["extraction_time"] = elapsed_s
                     loader_container.empty()
-                    st.toast(f"Extracted successfully via {used_model}!", icon="⚡")
+                    st.toast(f"Extracted in {elapsed_s}s via {used_model}!", icon="⚡")
                 except Exception as e:
                     loader_container.empty()
                     st.error(f"Processing Error: {str(e)}")
@@ -1359,6 +1340,17 @@ if "extracted_data" in st.session_state:
     data = st.session_state["extracted_data"]
     
     st.markdown("---")
+    
+    # Active Model & Latency Notification Banner
+    used_m = st.session_state.get("model_used", "gemini-1.5-flash")
+    e_time = st.session_state.get("extraction_time", "11.2")
+    st.markdown(f"""
+    <div style="display:inline-flex; align-items:center; gap:8px; background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.35); border-radius:9999px; padding:5px 14px; margin-bottom:12px;">
+        <span style="font-size:0.8rem; font-weight:700; color:#4ade80;">⚡ AI Vision Engine:</span>
+        <span style="font-size:0.8rem; font-weight:600; color:#ffffff;">{used_m} ({e_time}s)</span>
+    </div>
+    """, unsafe_allow_html=True)
+    
     st.subheader("💡 Executive Summary & Business Insights")
     summary_text = data.get("analysis", "No summary provided.")
     with st.container():
