@@ -500,6 +500,56 @@ def profile_dataset_metrics(df):
     return summary
 
 # =========================================================================
+# STRATEGIC DYNAMIC MODEL DISCOVERY & SUITABILITY SELECTOR
+# =========================================================================
+def discover_and_rank_active_models(key_str):
+    genai.configure(api_key=key_str)
+    discovered = []
+    try:
+        all_models = genai.list_models()
+        for m in all_models:
+            methods = getattr(m, 'supported_generation_methods', [])
+            name = m.name.replace("models/", "") if hasattr(m, 'name') else str(m)
+            # Filter for active multimodal generation models
+            if "generateContent" in methods and "gemini" in name.lower():
+                discovered.append(name)
+    except Exception:
+        pass
+        
+    # Strategic ranking based on vision capability and speed
+    def model_suitability_score(name):
+        n = name.lower()
+        if "embed" in n or "imagen" in n or "aqa" in n:
+            return -100
+        score = 0
+        if "2.0-flash" in n:
+            score += 100
+        elif "1.5-flash" in n:
+            score += 80
+        elif "1.5-pro" in n:
+            score += 70
+        elif "2.0-pro" in n:
+            score += 60
+        elif "flash" in n:
+            score += 50
+        elif "pro" in n:
+            score += 40
+        else:
+            score += 10
+        # Deprecate older/experimental endpoints
+        if "preview" in n or "exp" in n:
+            score -= 5
+        return score
+
+    ranked_models = sorted(discovered, key=model_suitability_score, reverse=True)
+    # Ensure fallbacks if listing is restricted by account
+    fallbacks = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"]
+    for fb in fallbacks:
+        if fb not in ranked_models:
+            ranked_models.append(fb)
+    return [m for m in ranked_models if model_suitability_score(m) > -50]
+
+# =========================================================================
 # EXCEL GENERATOR 1: BASE DATA ONLY (.XLSX)
 # =========================================================================
 def generate_base_excel_workbook(sheets_map):
@@ -913,7 +963,6 @@ def generate_ai_copilot_excel_workbook(sheets_map, master_df, ai_spec):
         ws_ai[f"{col_s_let}4"].value = str(k.get("label", "Metric")).upper()
         ws_ai[f"{col_s_let}4"].font = Font(name="Calibri", size=9, bold=True, color=TEXT_MUTED)
         
-        # Link card 1 directly to live formula
         if idx == 0 and "TOTAL" in str(k.get("label", "")).upper():
             ws_ai[f"{col_s_let}5"].value = f"=COUNTA('{data_sheet_name}'!B2:B{len(master_df)+1})"
         else:
@@ -1025,9 +1074,11 @@ def generate_ai_copilot_excel_workbook(sheets_map, master_df, ai_spec):
     wb.save(buf)
     return buf.getvalue()
 
-# Universal Multi-Model Extraction Cascade
+# =========================================================================
+# UNIVERSAL EXTRACTION ENGINE WITH STRATEGIC MODEL SELECTION
+# =========================================================================
 def execute_extraction_cascade(files_data, key_str):
-    genai.configure(api_key=key_str)
+    active_models = discover_and_rank_active_models(key_str)
     
     prompt = """
     You are an expert Data Engineer and OCR Analyst.
@@ -1071,9 +1122,8 @@ def execute_extraction_cascade(files_data, key_str):
             
     contents.append(prompt)
 
-    model_cascade = ["gemini-3.6-flash", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash-latest"]
     last_err = None
-    for model_name in model_cascade:
+    for model_name in active_models:
         try:
             model = genai.GenerativeModel(model_name)
             response = model.generate_content(
@@ -1091,12 +1141,11 @@ def execute_extraction_cascade(files_data, key_str):
             last_err = err
             continue
 
-    raise Exception(f"Extraction failed across models. Last Error: {last_err}")
+    raise Exception(f"Extraction failed across active models. Last Error: {last_err}")
 
-# AI Custom Dashboard Copilot Query Function with True Statistical Context
+# AI Custom Dashboard Copilot Query Function with Dynamic Model Selection
 def ask_ai_for_dashboard_spec(df, user_instruction, key_str):
-    genai.configure(api_key=key_str)
-    
+    active_models = discover_and_rank_active_models(key_str)
     metrics_context = profile_dataset_metrics(df)
     
     prompt = f"""
@@ -1131,8 +1180,7 @@ def ask_ai_for_dashboard_spec(df, user_instruction, key_str):
     }}
     """
     
-    model_cascade = ["gemini-3.6-flash", "gemini-2.5-flash", "gemini-2.0-flash"]
-    for m in model_cascade:
+    for m in active_models:
         try:
             model = genai.GenerativeModel(m)
             res = model.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
@@ -1284,10 +1332,10 @@ if uploaded_files:
                     <div class="spinner-radar-ring"></div>
                     <div class="glass-loading-title">AI Vision Processing & Formatting</div>
                     <div class="glass-loading-desc">
-                        Analyzing visual matrix, isolating tabular rows, sanitizing values & building visual dashboard metrics.
+                        Discovering available active models, isolating tabular rows, sanitizing values & building visual dashboard metrics.
                     </div>
                     <div class="status-pills-row">
-                        <span class="status-pill">🔍 OCR Matrix Scan</span>
+                        <span class="status-pill">🔍 Active Model Discovery</span>
                         <span class="status-pill">🧹 Noise Sanitization</span>
                         <span class="status-pill">📑 Table Structuring</span>
                         <span class="status-pill">📊 .xlsx Synthesis</span>
