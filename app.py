@@ -3,6 +3,7 @@ import pandas as pd
 import io
 import json
 import os
+import base64
 from PIL import Image
 import google.generativeai as genai
 from openai import OpenAI
@@ -15,7 +16,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Fetch Keys from Streamlit Secrets or Environment
+# Fetch Keys from Secrets or Environment
 gemini_key = st.secrets.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY", "")
 openai_key = st.secrets.get("OPENAI_API_KEY") or os.environ.get("OPENAI_API_KEY", "")
 
@@ -31,9 +32,9 @@ st.markdown("""
 }
 
 section[data-testid="stSidebar"] {
-    min-width: 310px !important;
-    max-width: 310px !important;
-    width: 310px !important;
+    min-width: 300px !important;
+    max-width: 300px !important;
+    width: 300px !important;
     background-color: #0b0f19 !important;
     border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
 }
@@ -167,58 +168,16 @@ EXCEL_ICON_MAIN = '<svg width="48" height="48" viewBox="0 0 48 48" fill="none" x
 
 EXCEL_ICON_SIDEBAR = '<svg width="28" height="28" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align: middle;"><rect x="14" y="6" width="28" height="36" rx="4" fill="#107C41"/><rect x="23" y="13" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="31" y="13" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="23" y="19" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="31" y="19" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="23" y="25" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="31" y="25" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="23" y="31" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="31" y="31" width="6" height="4" fill="#ffffff" fill-opacity="0.85"/><rect x="6" y="9" width="22" height="30" rx="3" fill="#185C37"/><path d="M11.5 30L15.3 24L11.8 18H15.2L17 21.5L18.8 18H22.2L18.7 24L22.5 30H19.1L17 26.2L14.9 30H11.5Z" fill="white"/></svg>'
 
-# Helper function to dynamically discover available Gemini models
-def get_available_gemini_models(key):
-    if not key:
-        return []
-    try:
-        genai.configure(api_key=key)
-        models = [
-            m.name.replace("models/", "")
-            for m in genai.list_models()
-            if "generateContent" in m.supported_generation_methods and "gemini" in m.name
-        ]
-        return models
-    except Exception:
-        return ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash-exp"]
-
-# Sidebar Configuration
+# Clean Static Sidebar
 with st.sidebar:
     st.markdown(f'<div style="display:flex; align-items:center; gap:10px; margin-bottom: 6px;">{EXCEL_ICON_SIDEBAR}<span style="font-size:1.35rem; font-weight:700; color:#ffffff; font-family:\'Space Grotesk\',sans-serif;">SheetGen AI</span></div>', unsafe_allow_html=True)
-    st.caption("Multi-Model Document Intelligence")
+    st.caption("Automated Tabular Data Extraction Engine")
     st.markdown("<hr style='border:none; border-top:1px solid rgba(255,255,255,0.08); margin:12px 0;'>", unsafe_allow_html=True)
     
-    # Model Provider Selector
-    available_providers = []
-    if gemini_key:
-        available_providers.append("Google Gemini")
-    if openai_key:
-        available_providers.append("OpenAI")
-        
-    if not available_providers:
-        st.error("⚠️ No API keys found in Secrets.")
-        selected_provider = None
-        selected_model = None
-    else:
-        selected_provider = st.selectbox("AI Engine Provider", available_providers)
-        
-        if selected_provider == "Google Gemini":
-            gemini_models = get_available_gemini_models(gemini_key)
-            # Default to flash if present
-            default_idx = 0
-            for idx, m in enumerate(gemini_models):
-                if "flash" in m:
-                    default_idx = idx
-                    break
-            selected_model = st.selectbox("Select Model", gemini_models, index=default_idx)
-        else:
-            selected_model = st.selectbox("Select Model", ["gpt-4o", "gpt-4o-mini"])
-
-    st.markdown("<hr style='border:none; border-top:1px solid rgba(255,255,255,0.08); margin:12px 0;'>", unsafe_allow_html=True)
     st.markdown("<div style='font-size:0.8rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:#94a3b8; margin-bottom:10px;'>Core Capabilities</div>", unsafe_allow_html=True)
     
     sidebar_items_html = (
-        '<div class="sidebar-item"><div class="sidebar-title">📑 Multi-Engine Batch OCR</div>'
+        '<div class="sidebar-item"><div class="sidebar-title">📑 Batch File & PDF Parsing</div>'
         '<div class="sidebar-desc">Scans tables, rosters, handwritten notes, and PDF pages.</div></div>'
         '<div class="sidebar-item"><div class="sidebar-title">🗃️ Multi-Table Isolation</div>'
         '<div class="sidebar-desc">Separates distinct tables cleanly into separate tabs.</div></div>'
@@ -270,8 +229,8 @@ with col_card3:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# Multi-Provider Document Processing Function
-def process_documents_multi(files_data, provider, model_name):
+# Automated Vision Backend Engine
+def process_documents_auto(files_data):
     prompt_text = """
     You are an expert Data Specialist and OCR Analyst.
     Analyze all the uploaded document(s) and image(s) carefully (including handwritten text and registers):
@@ -302,9 +261,30 @@ def process_documents_multi(files_data, provider, model_name):
     }
     """
     
-    if provider == "Google Gemini":
+    # Priority 1: OpenAI GPT-4o Vision if key available
+    if openai_key:
+        try:
+            client = OpenAI(api_key=openai_key)
+            content_payload = [{"type": "text", "text": prompt_text}]
+            for file_bytes, mime_type in files_data:
+                b64_str = base64.b64encode(file_bytes).decode('utf-8')
+                content_payload.append({
+                    "type": "image_url",
+                    "image_url": {"url": f"data:{mime_type};base64,{b64_str}"}
+                })
+            
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[{"role": "user", "content": content_payload}],
+                response_format={"type": "json_object"}
+            )
+            return response.choices[0].message.content.strip()
+        except Exception:
+            pass # Fall through to Gemini
+
+    # Priority 2: Gemini Vision with verified models
+    if gemini_key:
         genai.configure(api_key=gemini_key)
-        model = genai.GenerativeModel(model_name)
         
         contents = []
         for file_bytes, mime_type in files_data:
@@ -315,35 +295,28 @@ def process_documents_multi(files_data, provider, model_name):
                 contents.append({"mime_type": mime_type, "data": file_bytes})
         contents.append(prompt_text)
         
-        response = model.generate_content(contents)
-        raw_text = response.text.strip()
-    else:
-        # OpenAI Implementation
-        client = OpenAI(api_key=openai_key)
-        import base64
-        content_payload = [{"type": "text", "text": prompt_text}]
-        for file_bytes, mime_type in files_data:
-            b64_str = base64.b64encode(file_bytes).decode('utf-8')
-            content_payload.append({
-                "type": "image_url",
-                "image_url": {"url": f"data:{mime_type};base64,{b64_str}"}
-            })
-        
-        response = client.chat.completions.create(
-            model=model_name,
-            messages=[{"role": "user", "content": content_payload}],
-            response_format={"type": "json_object"}
-        )
-        raw_text = response.choices[0].message.content.strip()
+        # Test proven multimodal vision endpoints
+        vision_candidates = ["gemini-1.5-flash", "gemini-1.5-pro"]
+        for candidate in vision_candidates:
+            try:
+                model = genai.GenerativeModel(candidate)
+                response = model.generate_content(
+                    contents,
+                    generation_config={"response_mime_type": "application/json"}
+                )
+                if response and response.text:
+                    raw_text = response.text.strip()
+                    if raw_text.startswith("```json"):
+                        raw_text = raw_text[7:]
+                    if raw_text.startswith("```"):
+                        raw_text = raw_text[3:]
+                    if raw_text.endswith("```"):
+                        raw_text = raw_text[:-3]
+                    return raw_text.strip()
+            except Exception:
+                continue
 
-    # Sanitization of JSON wrapper
-    if raw_text.startswith("```json"):
-        raw_text = raw_text[7:]
-    if raw_text.startswith("```"):
-        raw_text = raw_text[3:]
-    if raw_text.endswith("```"):
-        raw_text = raw_text[:-3]
-    return raw_text.strip()
+    raise Exception("Could not process images. Please verify your API keys in Streamlit Secrets.")
 
 # Document Upload Section
 uploaded_files = st.file_uploader(
@@ -373,11 +346,11 @@ if uploaded_files:
                 
         with col_action:
             st.subheader("⚡ Convert to Excel")
-            st.caption(f"Using **{selected_provider} ({selected_model})** to extract tables and compile into a unified spreadsheet.")
+            st.caption(f"Process all {len(uploaded_files)} file(s), extract tables, and compile into a unified spreadsheet.")
             if st.button("🚀 Extract Tables & Convert to Excel", type="primary", use_container_width=True):
-                with st.spinner(f"Processing with {selected_model}..."):
+                with st.spinner("AI Vision is reading document data and generating Excel sheets..."):
                     try:
-                        raw_json_str = process_documents_multi(files_data, selected_provider, selected_model)
+                        raw_json_str = process_documents_auto(files_data)
                         data = json.loads(raw_json_str)
                         st.session_state["extracted_data"] = data
                         st.toast(f"Successfully processed {len(uploaded_files)} file(s)!", icon="✅")
