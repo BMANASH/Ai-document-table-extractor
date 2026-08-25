@@ -174,7 +174,7 @@ div[data-testid="stFileUploader"] {
     background: radial-gradient(circle at 50% 50%, rgba(34, 197, 94, 0.08) 0%, rgba(17, 24, 39, 0.85) 100%) !important;
     border: 2px dashed rgba(34, 197, 94, 0.6) !important;
     border-radius: 16px !important;
-    padding: 1.75rem 1.5rem !important;
+    padding: 1.5rem 1.5rem !important;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45), 0 0 24px rgba(34, 197, 94, 0.15) !important;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
@@ -194,6 +194,11 @@ div[data-testid="stFileUploader"] label {
     margin-bottom: 0.6rem !important;
 }
 
+/* Hide Streamlit default 200MB file size limit text */
+div[data-testid="stFileUploader"] small, div[data-testid="stFileUploader"] [data-testid="stCaptionContainer"] {
+    display: none !important;
+}
+
 div[data-testid="stFileUploader"] section button {
     background: linear-gradient(135deg, #107C41 0%, #15803d 100%) !important;
     color: #ffffff !important;
@@ -203,6 +208,36 @@ div[data-testid="stFileUploader"] section button {
     padding: 0.55rem 1.35rem !important;
     box-shadow: 0 4px 16px rgba(16, 124, 65, 0.45) !important;
     transition: all 0.2s ease-in-out !important;
+}
+
+.upload-limits-card {
+    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    border-radius: 12px;
+    padding: 10px 16px;
+    margin-bottom: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+.upload-limits-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #38bdf8;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.upload-limits-pill {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #cbd5e1;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 3px 10px;
+    border-radius: 9999px;
 }
 
 .kpi-stat-card {
@@ -1263,6 +1298,20 @@ def show_preview_modal(file_name, file_bytes, mime_type):
     elif "pdf" in mime_type:
         st.info(f"📑 PDF File: **{file_name}** ({len(file_bytes)/1024:.1f} KB)")
 
+# Custom Upload Limit Card
+st.markdown("""
+<div class="upload-limits-card">
+    <div class="upload-limits-title">
+        <span>📌 Recommended Batch Limits for Optimal Extraction Speed:</span>
+    </div>
+    <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+        <span class="upload-limits-pill">🖼️ Images: Max 6 Pages / Photos</span>
+        <span class="upload-limits-pill">📑 PDFs: Max 2 Files</span>
+        <span class="upload-limits-pill">📦 Total Combined Size: Under 20 MB</span>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
 # Document Upload Section with Multiple File Support
 uploaded_files = st.file_uploader(
     "📥 Drop your PDF document(s) or images here", 
@@ -1271,6 +1320,18 @@ uploaded_files = st.file_uploader(
 )
 
 if uploaded_files:
+    # Validate Upload Batch Constraints
+    img_count = sum(1 for f in uploaded_files if "image" in f.type)
+    pdf_count = sum(1 for f in uploaded_files if "pdf" in f.type)
+    total_mb = sum(len(f.getvalue()) for f in uploaded_files) / (1024 * 1024)
+
+    if img_count > 6:
+        st.warning(f"⚠️ **Upload Notice:** You have uploaded {img_count} images. For optimal accuracy and speed, we recommend a maximum of 6 images per batch.")
+    elif pdf_count > 2:
+        st.warning(f"⚠️ **Upload Notice:** You have uploaded {pdf_count} PDF files. Please limit your batch to a maximum of 2 PDFs at a time.")
+    elif total_mb > 20:
+        st.warning(f"⚠️ **File Size Notice:** Total upload size is {total_mb:.1f} MB. Please ensure combined files remain under 20 MB for smooth processing.")
+
     if not api_key:
         st.error("⚠️ System Error: GEMINI_API_KEY not found in Streamlit Secrets. Please add it to your app settings.")
     else:
