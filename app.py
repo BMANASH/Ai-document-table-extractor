@@ -240,7 +240,7 @@ with col_card3:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# Helper Function: Process Multi-file Batch via Gemini 1.5 Flash Vision
+# Multi-Model Resilient Processor
 def process_documents(files_data, key):
     client = genai.Client(api_key=key)
     prompt = """
@@ -277,14 +277,37 @@ def process_documents(files_data, key):
         contents.append(types.Part.from_bytes(data=file_bytes, mime_type=mime_type))
     contents.append(prompt)
 
-    response = client.models.generate_content(
-        model='gemini-1.5-flash',
-        contents=contents,
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json"
-        )
-    )
+    # Automated Model Candidate Fallback
+    model_candidates = [
+        "gemini-2.0-flash",
+        "gemini-2.0-flash-exp",
+        "gemini-1.5-flash-latest",
+        "gemini-1.5-pro-latest",
+        "gemini-1.5-flash",
+        "gemini-1.5-pro"
+    ]
     
+    response = None
+    last_error = None
+    
+    for candidate in model_candidates:
+        try:
+            response = client.models.generate_content(
+                model=candidate,
+                contents=contents,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json"
+                )
+            )
+            if response and response.text:
+                break
+        except Exception as err:
+            last_error = err
+            continue
+
+    if not response or not response.text:
+        raise Exception(f"All model endpoints failed. Last error: {last_error}")
+
     # Clean possible markdown wrap
     text = response.text.strip()
     if text.startswith("```json"):
