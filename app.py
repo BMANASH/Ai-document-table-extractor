@@ -18,112 +18,128 @@ st.set_page_config(
 # Fetch API Key silently from Streamlit Secrets or Environment
 api_key = st.secrets.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY")
 
-# Modern Dark Theme Styling & SVG Badges
+# Modern Dark Theme & Typography
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap');
 
-    .stApp {
-        background: radial-gradient(circle at 50% 0%, #111827 0%, #080b11 75%, #05070a 100%) !important;
-        color: #e2e8f0;
-        font-family: 'Plus Jakarta Sans', sans-serif;
-    }
+.stApp {
+    background: radial-gradient(circle at 50% 0%, #111827 0%, #080b11 75%, #05070a 100%) !important;
+    color: #e2e8f0;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+}
 
-    h1, h2, h3 {
-        font-family: 'Space Grotesk', sans-serif !important;
-        letter-spacing: -0.02em;
-        font-weight: 700;
-    }
-    
-    .header-container {
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        margin-top: 0.5rem;
-        margin-bottom: 0.25rem;
-    }
+h1, h2, h3 {
+    font-family: 'Space Grotesk', sans-serif !important;
+    letter-spacing: -0.02em;
+    font-weight: 700;
+}
 
-    .excel-title {
-        background: linear-gradient(135deg, #22c55e 0%, #10b981 50%, #38bdf8 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        font-size: 2.75rem !important;
-        font-weight: 800 !important;
-        line-height: 1.15;
-    }
+.header-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-top: 0.5rem;
+    margin-bottom: 0.25rem;
+}
 
-    .sub-heading {
-        color: #94a3b8;
-        font-size: 1.05rem;
-        font-weight: 400;
-        margin-bottom: 1.5rem;
-    }
+.excel-title {
+    background: linear-gradient(135deg, #22c55e 0%, #10b981 50%, #38bdf8 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-size: 2.75rem !important;
+    font-weight: 800 !important;
+    line-height: 1.1;
+}
 
-    .feature-card {
-        background: rgba(17, 24, 39, 0.7);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 14px;
-        padding: 1.25rem;
-        backdrop-filter: blur(12px);
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
-    }
+.sub-heading {
+    color: #94a3b8;
+    font-size: 1.05rem;
+    font-weight: 400;
+    margin-bottom: 1.5rem;
+}
 
-    .status-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 4px 12px;
-        border-radius: 9999px;
-        font-size: 0.75rem;
-        font-weight: 600;
-        background: rgba(34, 197, 94, 0.12);
-        color: #4ade80;
-        border: 1px solid rgba(34, 197, 94, 0.3);
-        margin-bottom: 1rem;
-    }
+.feature-card {
+    background: rgba(17, 24, 39, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 1.25rem;
+    backdrop-filter: blur(12px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+}
 
-    section[data-testid="stSidebar"] {
-        background-color: #0b0f19 !important;
-        border-right: 1px solid rgba(255, 255, 255, 0.06);
-    }
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: rgba(34, 197, 94, 0.12);
+    color: #4ade80;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    margin-bottom: 1rem;
+}
 
-    .stButton > button[kind="primary"] {
-        background: linear-gradient(135deg, #16a34a 0%, #15803d 100%) !important;
-        color: #ffffff !important;
-        font-weight: 600 !important;
-        border: none !important;
-        border-radius: 10px !important;
-        padding: 0.65rem 1.75rem !important;
-        box-shadow: 0 0 20px rgba(22, 163, 74, 0.4) !important;
-    }
-    
-    div[data-testid="stFileUploader"] {
-        background: rgba(17, 24, 39, 0.5) !important;
-        border: 1px dashed rgba(255, 255, 255, 0.15) !important;
-        border-radius: 14px !important;
-        padding: 1.5rem !important;
-    }
+section[data-testid="stSidebar"] {
+    background-color: #0b0f19 !important;
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.stButton > button[kind="primary"] {
+    background: linear-gradient(135deg, #16a34a 0%, #15803d 100%) !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    border: none !important;
+    border-radius: 10px !important;
+    padding: 0.65rem 1.75rem !important;
+    box-shadow: 0 0 20px rgba(22, 163, 74, 0.4) !important;
+}
+
+div[data-testid="stFileUploader"] {
+    background: rgba(17, 24, 39, 0.5) !important;
+    border: 1px dashed rgba(255, 255, 255, 0.15) !important;
+    border-radius: 14px !important;
+    padding: 1.5rem !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
-# Vector Excel Logo SVG
-EXCEL_LOGO_SVG = """
-<svg width="44" height="44" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect width="48" height="48" rx="10" fill="#107C41"/>
-    <path d="M15.5 33L21.8 24L16.2 15H21.2L24.3 20.8L27.4 15H32.4L26.7 24L33 33H28L24.2 26.8L20.4 33H15.5Z" fill="white"/>
-</svg>
-"""
+# Authentic Microsoft Excel 3D Vector Icon
+EXCEL_LOGO_SVG = """<svg width="46" height="46" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect x="18" y="7" width="24" height="34" rx="3" fill="#107C41"/>
+<rect x="22" y="11" width="7" height="4" fill="white" fill-opacity="0.9"/>
+<rect x="31" y="11" width="7" height="4" fill="white" fill-opacity="0.9"/>
+<rect x="22" y="17" width="7" height="4" fill="white" fill-opacity="0.9"/>
+<rect x="31" y="17" width="7" height="4" fill="white" fill-opacity="0.9"/>
+<rect x="22" y="23" width="7" height="4" fill="white" fill-opacity="0.9"/>
+<rect x="31" y="23" width="7" height="4" fill="white" fill-opacity="0.9"/>
+<rect x="22" y="29" width="7" height="4" fill="white" fill-opacity="0.9"/>
+<rect x="31" y="29" width="7" height="4" fill="white" fill-opacity="0.9"/>
+<rect x="22" y="35" width="7" height="2" fill="white" fill-opacity="0.9"/>
+<rect x="31" y="35" width="7" height="2" fill="white" fill-opacity="0.9"/>
+<path d="M6 10C6 9.4 6.4 8.9 7 8.8L22 6V42L7 39.2C6.4 39.1 6 38.6 6 38V10Z" fill="#185C37"/>
+<path d="M6 11C6 10.4 6.4 9.9 7 9.8L21 7.5V40.5L7 38.2C6.4 38.1 6 37.6 6 37V11Z" fill="#21A366"/>
+<path d="M10 18L17 30M17 18L10 30" stroke="white" stroke-width="2.8" stroke-linecap="round"/>
+</svg>"""
 
-SIDEBAR_EXCEL_SVG = """
-<svg width="28" height="28" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align: middle; margin-right: 8px;">
-    <rect width="48" height="48" rx="8" fill="#107C41"/>
-    <path d="M15.5 33L21.8 24L16.2 15H21.2L24.3 20.8L27.4 15H32.4L26.7 24L33 33H28L24.2 26.8L20.4 33H15.5Z" fill="white"/>
-</svg>
-"""
+SIDEBAR_EXCEL_SVG = """<svg width="28" height="28" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect x="18" y="7" width="24" height="34" rx="3" fill="#107C41"/>
+<rect x="22" y="11" width="7" height="4" fill="white" fill-opacity="0.9"/>
+<rect x="31" y="11" width="7" height="4" fill="white" fill-opacity="0.9"/>
+<rect x="22" y="17" width="7" height="4" fill="white" fill-opacity="0.9"/>
+<rect x="31" y="17" width="7" height="4" fill="white" fill-opacity="0.9"/>
+<rect x="22" y="23" width="7" height="4" fill="white" fill-opacity="0.9"/>
+<rect x="31" y="23" width="7" height="4" fill="white" fill-opacity="0.9"/>
+<path d="M6 10C6 9.4 6.4 8.9 7 8.8L22 6V42L7 39.2C6.4 39.1 6 38.6 6 38V10Z" fill="#185C37"/>
+<path d="M6 11C6 10.4 6.4 9.9 7 9.8L21 7.5V40.5L7 38.2C6.4 38.1 6 37.6 6 37V11Z" fill="#21A366"/>
+<path d="M10 18L17 30M17 18L10 30" stroke="white" stroke-width="2.8" stroke-linecap="round"/>
+</svg>"""
 
 # Clean Sidebar
 with st.sidebar:
-    st.markdown(f'<div style="display:flex; align-items:center; gap:8px;">{SIDEBAR_EXCEL_SVG} <h3 style="margin:0; font-size:1.4rem;">SheetGen AI</h3></div>', unsafe_allow_html=True)
+    st.markdown(f'<div style="display:flex; align-items:center; gap:10px;">{SIDEBAR_EXCEL_SVG}<h3 style="margin:0; font-size:1.35rem; color:#ffffff;">SheetGen AI</h3></div>', unsafe_allow_html=True)
     st.caption("Automated Tabular Data Extraction Engine")
     st.markdown("---")
     st.markdown("""
@@ -137,39 +153,28 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("🟢 **System Status:** Ready")
 
-# Hero Header with Vector Excel Icon
+# Hero Header
 st.markdown('<div class="status-badge">⚡ Instant Document to Spreadsheet</div>', unsafe_allow_html=True)
-st.markdown(f'''
-<div class="header-container">
-    {EXCEL_LOGO_SVG}
-    <div class="excel-title">SheetGen AI</div>
-</div>
-''', unsafe_allow_html=True)
+st.markdown(f'<div class="header-wrapper">{EXCEL_LOGO_SVG}<span class="excel-title">SheetGen AI</span></div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-heading">Upload any PDF or image table → Automatically convert it to a clean, editable Excel file.</div>', unsafe_allow_html=True)
 
 # 3 Step Visual Workflow Cards
 col_card1, col_card2, col_card3 = st.columns(3)
 with col_card1:
-    st.markdown("""
-    <div class="feature-card">
-        <div style="font-size: 1.15rem; font-weight:700; color:#4ade80; margin-bottom:4px;">1. Upload File</div>
-        <div style="font-size:0.85rem; color:#94a3b8;">Drop scanned photos or multi-page PDFs with data tables.</div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown("""<div class="feature-card">
+<div style="font-size: 1.15rem; font-weight:700; color:#4ade80; margin-bottom:4px;">1. Upload File</div>
+<div style="font-size:0.85rem; color:#94a3b8;">Drop scanned photos or multi-page PDFs with data tables.</div>
+</div>""", unsafe_allow_html=True)
 with col_card2:
-    st.markdown("""
-    <div class="feature-card">
-        <div style="font-size: 1.15rem; font-weight:700; color:#38bdf8; margin-bottom:4px;">2. AI Cleans & Formats</div>
-        <div style="font-size:0.85rem; color:#94a3b8;">AI extracts rows, columns, and fixes messy numbers automatically.</div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown("""<div class="feature-card">
+<div style="font-size: 1.15rem; font-weight:700; color:#38bdf8; margin-bottom:4px;">2. AI Cleans & Formats</div>
+<div style="font-size:0.85rem; color:#94a3b8;">AI extracts rows, columns, and fixes messy numbers automatically.</div>
+</div>""", unsafe_allow_html=True)
 with col_card3:
-    st.markdown("""
-    <div class="feature-card">
-        <div style="font-size: 1.15rem; font-weight:700; color:#a78bfa; margin-bottom:4px;">3. Download Excel (.xlsx)</div>
-        <div style="font-size:0.85rem; color:#94a3b8;">Get a multi-sheet Excel file ready for formulas and charts.</div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown("""<div class="feature-card">
+<div style="font-size: 1.15rem; font-weight:700; color:#a78bfa; margin-bottom:4px;">3. Download Excel (.xlsx)</div>
+<div style="font-size:0.85rem; color:#94a3b8;">Get a multi-sheet Excel file ready for formulas and charts.</div>
+</div>""", unsafe_allow_html=True)
 
 st.markdown("<br>", unsafe_allow_html=True)
 
@@ -262,7 +267,7 @@ if "extracted_data" in st.session_state:
     else:
         st.markdown("---")
         st.subheader("✏️ Review & Edit Tables")
-        st.caption("You can double-click any cell below to fix any typos before downloading.")
+        st.caption("Double-click any cell below to fix any typos before downloading.")
         
         edited_dfs = {}
         for idx, tbl in enumerate(tables):
