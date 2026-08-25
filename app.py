@@ -145,7 +145,48 @@ h1, h2, h3 {
     margin-bottom: 1rem;
 }
 
-/* Master Download Button Styling (Pure Excel Emerald Green) */
+/* ENLARGED & PERMANENTLY VISIBLE DATA EDITOR ACTION TOOLBAR */
+[data-testid="stElementToolbar"] {
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: flex !important;
+    gap: 6px !important;
+    background: rgba(15, 23, 42, 0.95) !important;
+    border: 1px solid rgba(34, 197, 94, 0.35) !important;
+    border-radius: 10px !important;
+    padding: 4px 8px !important;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5), 0 0 12px rgba(34, 197, 94, 0.2) !important;
+    top: -46px !important;
+    right: 0px !important;
+}
+
+[data-testid="stElementToolbar"] button {
+    width: 34px !important;
+    height: 34px !important;
+    border-radius: 8px !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: #4ade80 !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    transition: all 0.2s ease-in-out !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+[data-testid="stElementToolbar"] button:hover {
+    background: rgba(34, 197, 94, 0.25) !important;
+    border-color: #22c55e !important;
+    color: #ffffff !important;
+    transform: scale(1.12) !important;
+}
+
+[data-testid="stElementToolbar"] svg {
+    width: 18px !important;
+    height: 18px !important;
+    fill: currentColor !important;
+}
+
+/* Single Master Excel Download Button (Emerald Green) */
 .stDownloadButton > button {
     background: linear-gradient(135deg, #107C41 0%, #15803d 100%) !important;
     color: #ffffff !important;
@@ -201,8 +242,8 @@ with st.sidebar:
         '<div class="sidebar-desc">Guaranteed distinct tabs for each uploaded page/table.</div></div>'
         '<div class="sidebar-item"><div class="sidebar-title">🧹 Auto-Sanitization & Styling</div>'
         '<div class="sidebar-desc">Removes artifacts, auto-fits columns & formats Excel sheets.</div></div>'
-        '<div class="sidebar-item"><div class="sidebar-title">✏️ In-Browser Data Grid</div>'
-        '<div class="sidebar-desc">Double-click cells to adjust values before downloading.</div></div>'
+        '<div class="sidebar-item"><div class="sidebar-title">✏️ Visual In-Browser Grid</div>'
+        '<div class="sidebar-desc">Enlarged toolbar to add rows, search, hide columns & edit data.</div></div>'
         '<div class="sidebar-item"><div class="sidebar-title">📥 Native .xlsx Generator</div>'
         '<div class="sidebar-desc">Multi-sheet Excel workbook with formatted master tab.</div></div>'
     )
@@ -462,7 +503,7 @@ if "extracted_data" in st.session_state:
     else:
         st.markdown("---")
         st.subheader("✏️ Review & Edit Tables")
-        st.caption("Double-click any cell below to modify names, phone numbers, or remarks before downloading.")
+        st.caption("Use the top-right toolbar on each table to Add Rows (+), Hide/Show Columns (👁), Search (🔍), or go Fullscreen (⛶). Double-click any cell to edit values directly.")
         
         edited_dfs = {}
         for idx, tbl in enumerate(tables):
@@ -477,22 +518,22 @@ if "extracted_data" in st.session_state:
             df = pd.DataFrame(cleaned_rows, columns=headers if headers else None)
             df.fillna("", inplace=True)
             
-            # Clean Table Title with HTML badge (No backtick artifacts)
+            # Clean Table Title with HTML badge
             badge_html = f'''
-            <div style="display:flex; align-items:center; gap:12px; margin-top:1.5rem; margin-bottom:0.6rem;">
-                <span style="font-size:1.2rem; font-weight:700; color:#ffffff;">📊 {table_name}</span>
+            <div style="display:flex; align-items:center; gap:12px; margin-top:1.8rem; margin-bottom:0.75rem;">
+                <span style="font-size:1.25rem; font-weight:700; color:#ffffff; font-family:'Space Grotesk', sans-serif;">📊 {table_name}</span>
                 <span style="font-size:0.75rem; font-weight:600; background:rgba(34,197,94,0.15); color:#4ade80; border:1px solid rgba(34,197,94,0.3); padding:3px 10px; border-radius:9999px;">{len(df)} Records</span>
             </div>
             '''
             st.markdown(badge_html, unsafe_allow_html=True)
             
-            # Interactive Data Editor
+            # Interactive Data Editor with styled persistent toolbar
             edited_df = st.data_editor(
                 df, 
                 key=f"editor_{idx}", 
                 num_rows="dynamic", 
                 use_container_width=True,
-                height=min(400, 45 + len(df) * 35)
+                height=min(450, 45 + len(df) * 35)
             )
             edited_dfs[table_name] = edited_df
 
