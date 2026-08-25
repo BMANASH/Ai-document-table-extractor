@@ -10,12 +10,13 @@ import google.generativeai as genai
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
+from openpyxl.chart import BarChart, PieChart, Reference
 import plotly.express as px
 import plotly.graph_objects as go
 
 # Page Configuration
 st.set_page_config(
-    page_title="SheetGen AI | Document to Excel & Dashboard",
+    page_title="SheetGen AI | Universal Document to Excel & Dashboard",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -167,6 +168,7 @@ h1, h2, h3, h4 {
     margin-bottom: 1rem;
 }
 
+/* High-Visibility Upload Box */
 div[data-testid="stFileUploader"] {
     background: radial-gradient(circle at 50% 50%, rgba(34, 197, 94, 0.08) 0%, rgba(17, 24, 39, 0.85) 100%) !important;
     border: 2px dashed rgba(34, 197, 94, 0.6) !important;
@@ -233,7 +235,7 @@ div[data-testid="stFileUploader"] section button {
     margin-top: 4px;
 }
 
-/* ENLARGED & PERMANENTLY VISIBLE DATA EDITOR ACTION TOOLBAR */
+/* Data Editor Action Toolbar */
 [data-testid="stElementToolbar"] {
     opacity: 1 !important;
     visibility: visible !important;
@@ -274,15 +276,15 @@ div[data-testid="stFileUploader"] section button {
     fill: currentColor !important;
 }
 
-/* Master Download Button Styling (Pure Excel Emerald Green) */
+/* Emerald Green Download Buttons */
 .stDownloadButton > button {
     background: linear-gradient(135deg, #107C41 0%, #15803d 100%) !important;
     color: #ffffff !important;
     font-weight: 700 !important;
-    font-size: 1.1rem !important;
+    font-size: 1.05rem !important;
     border: none !important;
     border-radius: 12px !important;
-    padding: 0.9rem 2.2rem !important;
+    padding: 0.85rem 2rem !important;
     box-shadow: 0 4px 25px rgba(16, 124, 65, 0.45) !important;
     transition: all 0.25s ease-in-out !important;
 }
@@ -301,10 +303,86 @@ div[data-testid="stFileUploader"] section button {
     box-shadow: 0 0 20px rgba(22, 163, 74, 0.4) !important;
 }
 
-div[data-testid="stModal"] > div {
-    background-color: #0d121f !important;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
-    color: #e2e8f0 !important;
+/* Frosted-Glass Loading Animation Overlay */
+@keyframes spinRadarRing {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+@keyframes pulseGlassGlow {
+    0% { box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 18px rgba(34, 197, 94, 0.25); border-color: rgba(34, 197, 94, 0.4); }
+    50% { box-shadow: 0 14px 44px rgba(0, 0, 0, 0.75), 0 0 36px rgba(34, 197, 94, 0.65); border-color: rgba(34, 197, 94, 0.95); }
+    100% { box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 18px rgba(34, 197, 94, 0.25); border-color: rgba(34, 197, 94, 0.4); }
+}
+@keyframes shimmerGlowText {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+
+.glass-loading-card {
+    background: rgba(15, 23, 42, 0.88) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    border: 1.5px solid rgba(34, 197, 94, 0.55) !important;
+    border-radius: 18px !important;
+    padding: 2.2rem 2.5rem !important;
+    margin: 1.5rem 0 !important;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    animation: pulseGlassGlow 2.5s infinite ease-in-out;
+}
+
+.spinner-radar-ring {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    border: 3.5px solid rgba(255, 255, 255, 0.08);
+    border-top: 3.5px solid #22c55e;
+    border-right: 3.5px solid #38bdf8;
+    animation: spinRadarRing 1.1s linear infinite;
+    margin-bottom: 16px;
+}
+
+.glass-loading-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 1.45rem;
+    font-weight: 700;
+    background: linear-gradient(90deg, #ffffff 0%, #4ade80 50%, #ffffff 100%);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: shimmerGlowText 3s linear infinite;
+    margin-bottom: 8px;
+}
+
+.glass-loading-desc {
+    font-size: 0.95rem;
+    color: #94a3b8;
+    max-width: 560px;
+    line-height: 1.5;
+    margin-bottom: 16px;
+}
+
+.status-pills-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+}
+
+.status-pill {
+    font-size: 0.8rem;
+    font-weight: 600;
+    background: rgba(34, 197, 94, 0.14);
+    color: #4ade80;
+    border: 1px solid rgba(34, 197, 94, 0.35);
+    padding: 5px 14px;
+    border-radius: 9999px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -399,20 +477,19 @@ def normalize_column_header(col_name):
         return 'SL. NO.'
     return c.upper()
 
-# Enterprise OpenPyXL Workbook Builder
-def generate_styled_excel_workbook(sheets_map):
+# =========================================================================
+# EXCEL GENERATOR 1: BASE DATA ONLY (.XLSX)
+# =========================================================================
+def generate_base_excel_workbook(sheets_map):
     wb = openpyxl.Workbook()
     wb.remove(wb.active)
     
     header_font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
     header_fill = PatternFill(start_color="107C41", end_color="107C41", fill_type="solid")
     regular_font = Font(name="Calibri", size=10, color="1F2937")
-    
     thin_border = Border(
-        left=Side(style='thin', color='E5E7EB'),
-        right=Side(style='thin', color='E5E7EB'),
-        top=Side(style='thin', color='E5E7EB'),
-        bottom=Side(style='thin', color='E5E7EB')
+        left=Side(style='thin', color='E5E7EB'), right=Side(style='thin', color='E5E7EB'),
+        top=Side(style='thin', color='E5E7EB'), bottom=Side(style='thin', color='E5E7EB')
     )
     zebra_fill = PatternFill(start_color="F9FAFB", end_color="F9FAFB", fill_type="solid")
     
@@ -462,7 +539,264 @@ def generate_styled_excel_workbook(sheets_map):
     wb.save(buf)
     return buf.getvalue()
 
-# Universal Multi-Model Extraction Cascade
+# =========================================================================
+# EXCEL GENERATOR 2: DATA + SMART LIVE FORMULA DASHBOARD (.XLSX)
+# =========================================================================
+def generate_smart_dashboard_excel_workbook(sheets_map, master_df):
+    wb = openpyxl.Workbook()
+    wb.remove(wb.active)
+    
+    # 1. Create Raw Data Sheets first
+    header_font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
+    header_fill = PatternFill(start_color="107C41", end_color="107C41", fill_type="solid")
+    regular_font = Font(name="Calibri", size=10, color="1F2937")
+    thin_border = Border(
+        left=Side(style='thin', color='E5E7EB'), right=Side(style='thin', color='E5E7EB'),
+        top=Side(style='thin', color='E5E7EB'), bottom=Side(style='thin', color='E5E7EB')
+    )
+    zebra_fill = PatternFill(start_color="F9FAFB", end_color="F9FAFB", fill_type="solid")
+    
+    data_sheet_name = "Master Combined Records" if len(sheets_map) > 1 else list(sheets_map.keys())[0]
+    
+    for title, df in sheets_map.items():
+        ws = wb.create_sheet(title=title[:31])
+        ws.views.sheetView[0].showGridLines = True
+        headers = list(df.columns)
+        ws.append(headers)
+        ws.row_dimensions[1].height = 26
+        
+        for col_idx in range(1, len(headers) + 1):
+            cell = ws.cell(row=1, column=col_idx)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+            cell.border = thin_border
+            
+        for r_idx, row in enumerate(df.itertuples(index=False), start=2):
+            ws.row_dimensions[r_idx].height = 20
+            is_even = (r_idx % 2 == 0)
+            for col_idx, val in enumerate(row, start=1):
+                cell = ws.cell(row=r_idx, column=col_idx)
+                val_clean = "" if pd.isna(val) or str(val).strip().lower() in ["none", "nan", "null"] else str(val).strip()
+                cell.value = val_clean
+                cell.font = regular_font
+                cell.border = thin_border
+                if (val_clean.isdigit() and len(val_clean) < 5) or headers[col_idx-1] == 'SL. NO.':
+                    cell.alignment = Alignment(horizontal="center", vertical="center")
+                else:
+                    cell.alignment = Alignment(horizontal="left", vertical="center")
+                if is_even:
+                    cell.fill = zebra_fill
+                    
+        for col in ws.columns:
+            max_len = 0
+            col_letter = get_column_letter(col[0].column)
+            for cell in col:
+                val_s = str(cell.value or "")
+                if len(val_s) > max_len:
+                    max_len = len(val_s)
+            ws.column_dimensions[col_letter].width = max(max_len + 4, 14)
+            
+    # 2. Create Formula Dashboard Sheet at Index 0
+    ws_dash = wb.create_sheet(title="Executive Dashboard", index=0)
+    ws_dash.views.sheetView[0].showGridLines = True
+    
+    # Title Banner
+    ws_dash.merge_cells("A1:G1")
+    t_cell = ws_dash["A1"]
+    t_cell.value = "   📊 EXECUTIVE DATA INTELLIGENCE DASHBOARD"
+    t_cell.font = Font(name="Calibri", size=14, bold=True, color="FFFFFF")
+    t_cell.fill = header_fill
+    t_cell.alignment = Alignment(horizontal="left", vertical="center")
+    ws_dash.row_dimensions[1].height = 36
+    
+    # KPI 1: Live Total Records Formula
+    ws_dash["A3"].value = "TOTAL RECORDS PARSED"
+    ws_dash["A3"].font = Font(name="Calibri", size=9, color="6B7280", bold=True)
+    ws_dash["A4"].value = f"=COUNTA('{data_sheet_name}'!B2:B{len(master_df)+1})"
+    ws_dash["A4"].font = Font(name="Calibri", size=18, color="107C41", bold=True)
+    
+    # Pick primary category column for formula aggregation
+    cat_candidates = [c for c in master_df.columns if c not in ['SL. NO.', 'EMPLOYEE NAME', 'PHONE', 'PHONE NUMBER', 'NO.']]
+    cat_col = cat_candidates[0] if cat_candidates else master_df.columns[-1]
+    col_idx_in_data = master_df.columns.get_loc(cat_col) + 1
+    col_letter_in_data = get_column_letter(col_idx_in_data)
+    
+    # Aggregation Summary Table
+    ws_dash["A7"].value = cat_col
+    ws_dash["B7"].value = "LIVE RECORD COUNT"
+    ws_dash["A7"].font = Font(name="Calibri", size=10, bold=True, color="FFFFFF")
+    ws_dash["A7"].fill = header_fill
+    ws_dash["B7"].font = Font(name="Calibri", size=10, bold=True, color="FFFFFF")
+    ws_dash["B7"].fill = header_fill
+    
+    unique_cats = master_df[cat_col].replace("", pd.NA).dropna().unique().tolist()[:10]
+    for i, cat_val in enumerate(unique_cats, start=8):
+        ws_dash[f"A{i}"].value = str(cat_val)
+        # Live Excel Formula Linking to Data Sheet
+        ws_dash[f"B{i}"].value = f"=COUNTIF('{data_sheet_name}'!${col_letter_in_data}$2:${col_letter_in_data}${len(master_df)+1}, A{i})"
+        ws_dash[f"A{i}"].font = regular_font
+        ws_dash[f"B{i}"].font = regular_font
+        ws_dash[f"A{i}"].border = thin_border
+        ws_dash[f"B{i}"].border = thin_border
+        ws_dash[f"B{i}"].alignment = Alignment(horizontal="center", vertical="center")
+        
+    # Embed Native Excel Bar Chart
+    if len(unique_cats) > 0:
+        chart = BarChart()
+        chart.type = "col"
+        chart.style = 10
+        chart.title = f"Distribution by {cat_col}"
+        chart.y_axis.title = "Count"
+        chart.x_axis.title = cat_col
+        data_ref = Reference(ws_dash, min_col=2, min_row=7, max_row=7 + len(unique_cats))
+        cats_ref = Reference(ws_dash, min_col=1, min_row=8, max_row=7 + len(unique_cats))
+        chart.add_data(data_ref, titles_from_data=True)
+        chart.set_categories(cats_ref)
+        chart.height = 10
+        chart.width = 15
+        ws_dash.add_chart(chart, "D7")
+        
+    for col in ws_dash.columns:
+        max_len = 0
+        col_letter = get_column_letter(col[0].column)
+        for cell in col:
+            val_s = str(cell.value or "")
+            if len(val_s) > max_len and not val_s.startswith("="):
+                max_len = len(val_s)
+        ws_dash.column_dimensions[col_letter].width = max(max_len + 4, 18)
+        
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+# =========================================================================
+# EXCEL GENERATOR 3: DATA + AI CUSTOM COPILOT DASHBOARD (.XLSX)
+# =========================================================================
+def generate_ai_copilot_excel_workbook(sheets_map, master_df, ai_spec):
+    wb = openpyxl.Workbook()
+    wb.remove(wb.active)
+    
+    header_font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
+    header_fill = PatternFill(start_color="107C41", end_color="107C41", fill_type="solid")
+    regular_font = Font(name="Calibri", size=10, color="1F2937")
+    thin_border = Border(
+        left=Side(style='thin', color='E5E7EB'), right=Side(style='thin', color='E5E7EB'),
+        top=Side(style='thin', color='E5E7EB'), bottom=Side(style='thin', color='E5E7EB')
+    )
+    zebra_fill = PatternFill(start_color="F9FAFB", end_color="F9FAFB", fill_type="solid")
+    
+    data_sheet_name = "Master Combined Records" if len(sheets_map) > 1 else list(sheets_map.keys())[0]
+    
+    # Write Raw Data Sheets
+    for title, df in sheets_map.items():
+        ws = wb.create_sheet(title=title[:31])
+        ws.views.sheetView[0].showGridLines = True
+        headers = list(df.columns)
+        ws.append(headers)
+        ws.row_dimensions[1].height = 26
+        
+        for col_idx in range(1, len(headers) + 1):
+            cell = ws.cell(row=1, column=col_idx)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+            cell.border = thin_border
+            
+        for r_idx, row in enumerate(df.itertuples(index=False), start=2):
+            ws.row_dimensions[r_idx].height = 20
+            is_even = (r_idx % 2 == 0)
+            for col_idx, val in enumerate(row, start=1):
+                cell = ws.cell(row=r_idx, column=col_idx)
+                val_clean = "" if pd.isna(val) or str(val).strip().lower() in ["none", "nan", "null"] else str(val).strip()
+                cell.value = val_clean
+                cell.font = regular_font
+                cell.border = thin_border
+                if (val_clean.isdigit() and len(val_clean) < 5) or headers[col_idx-1] == 'SL. NO.':
+                    cell.alignment = Alignment(horizontal="center", vertical="center")
+                else:
+                    cell.alignment = Alignment(horizontal="left", vertical="center")
+                if is_even:
+                    cell.fill = zebra_fill
+                    
+        for col in ws.columns:
+            max_len = 0
+            col_letter = get_column_letter(col[0].column)
+            for cell in col:
+                val_s = str(cell.value or "")
+                if len(val_s) > max_len:
+                    max_len = len(val_s)
+            ws.column_dimensions[col_letter].width = max(max_len + 4, 14)
+            
+    # Write Custom AI Dashboard Sheet at Index 0
+    ws_ai = wb.create_sheet(title="Custom AI Dashboard", index=0)
+    ws_ai.views.sheetView[0].showGridLines = True
+    
+    # Title Banner
+    ws_ai.merge_cells("A1:G1")
+    t_cell = ws_ai["A1"]
+    t_cell.value = "   🤖 AI COPILOT CUSTOM VISUAL DASHBOARD"
+    t_cell.font = Font(name="Calibri", size=14, bold=True, color="FFFFFF")
+    t_cell.fill = PatternFill(start_color="0284C7", end_color="0284C7", fill_type="solid")
+    t_cell.alignment = Alignment(horizontal="left", vertical="center")
+    ws_ai.row_dimensions[1].height = 36
+    
+    # Custom KPIs from AI
+    kpis = ai_spec.get("kpi_cards", [])
+    for idx, k in enumerate(kpis[:3]):
+        c_letter = get_column_letter(1 + idx * 2)
+        ws_ai[f"{c_letter}3"].value = str(k.get("label", "Metric")).upper()
+        ws_ai[f"{c_letter}3"].font = Font(name="Calibri", size=9, color="6B7280", bold=True)
+        ws_ai[f"{c_letter}4"].value = str(k.get("value", "-"))
+        ws_ai[f"{c_letter}4"].font = Font(name="Calibri", size=16, color="0284C7", bold=True)
+        
+    # Render Chart Summaries with Formulas
+    charts = ai_spec.get("charts", [])
+    start_row = 7
+    for c_idx, c_info in enumerate(charts[:2]):
+        g_col = c_info.get("group_by_col")
+        if g_col not in master_df.columns:
+            g_col = master_df.columns[0]
+            
+        col_idx_data = master_df.columns.get_loc(g_col) + 1
+        col_let_data = get_column_letter(col_idx_data)
+        
+        ws_ai[f"A{start_row}"].value = g_col
+        ws_ai[f"B{start_row}"].value = "CALCULATED COUNT"
+        ws_ai[f"A{start_row}"].font = Font(name="Calibri", size=10, bold=True, color="FFFFFF")
+        ws_ai[f"A{start_row}"].fill = header_fill
+        ws_ai[f"B{start_row}"].font = Font(name="Calibri", size=10, bold=True, color="FFFFFF")
+        ws_ai[f"B{start_row}"].fill = header_fill
+        
+        cats = master_df[g_col].replace("", pd.NA).dropna().unique().tolist()[:8]
+        for r_offset, c_val in enumerate(cats, start=1):
+            curr_row = start_row + r_offset
+            ws_ai[f"A{curr_row}"].value = str(c_val)
+            ws_ai[f"B{curr_row}"].value = f"=COUNTIF('{data_sheet_name}'!${col_let_data}$2:${col_let_data}${len(master_df)+1}, A{curr_row})"
+            ws_ai[f"A{curr_row}"].font = regular_font
+            ws_ai[f"B{curr_row}"].font = regular_font
+            ws_ai[f"A{curr_row}"].border = thin_border
+            ws_ai[f"B{curr_row}"].border = thin_border
+            ws_ai[f"B{curr_row}"].alignment = Alignment(horizontal="center", vertical="center")
+            
+        start_row += len(cats) + 3
+        
+    for col in ws_ai.columns:
+        max_len = 0
+        col_letter = get_column_letter(col[0].column)
+        for cell in col:
+            val_s = str(cell.value or "")
+            if len(val_s) > max_len and not val_s.startswith("="):
+                max_len = len(val_s)
+        ws_ai.column_dimensions[col_letter].width = max(max_len + 4, 18)
+        
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+# =========================================================================
+# MULTI-MODEL EXTRACTION CASCADE
+# =========================================================================
 def execute_extraction_cascade(files_data, key_str):
     genai.configure(api_key=key_str)
     
@@ -509,7 +843,6 @@ def execute_extraction_cascade(files_data, key_str):
     contents.append(prompt)
 
     model_cascade = ["gemini-3.6-flash", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash-latest"]
-    
     last_err = None
     for model_name in model_cascade:
         try:
@@ -531,7 +864,7 @@ def execute_extraction_cascade(files_data, key_str):
 
     raise Exception(f"Extraction failed across models. Last Error: {last_err}")
 
-# AI Custom Dashboard Generator (Natural Language Copilot)
+# AI Custom Dashboard Copilot Query Function
 def ask_ai_for_dashboard_spec(df, user_instruction, key_str):
     genai.configure(api_key=key_str)
     
@@ -741,13 +1074,14 @@ if uploaded_files:
                     loader_container.empty()
                     st.error(f"Processing Error: {e}")
 
-# Results Display, Editable Table Grid & AI Dashboard Suite
+# =========================================================================
+# MAIN RESULTS & 3-MODE WORKSPACE
+# =========================================================================
 if "extracted_data" in st.session_state:
     data = st.session_state["extracted_data"]
     
     st.markdown("---")
     st.subheader("💡 Executive Summary & Business Insights")
-    
     summary_text = data.get("analysis", "No summary provided.")
     with st.container():
         st.markdown(summary_text)
@@ -756,9 +1090,17 @@ if "extracted_data" in st.session_state:
     if not tables:
         st.warning("No tables found in the uploaded file(s).")
     else:
+        # =========================================================================
+        # MODE 1: BASE DATA REVIEW, EDIT & DOWNLOAD
+        # =========================================================================
         st.markdown("---")
-        st.subheader("✏️ Review & Customize Your Extracted Excel")
-        st.caption("Edit and refine your displayed Excel tables below according to your work needs. You can double-click any cell to modify values, add new rows (+), search (🔍), or hide columns (👁) before downloading your final workbook.")
+        st.markdown("""
+        <div style="display:flex; align-items:center; gap:12px; margin-top:1.2rem; margin-bottom:0.4rem;">
+            <span style="font-size:1.5rem; font-weight:800; color:#ffffff; font-family:'Space Grotesk', sans-serif;">📋 Mode 1: Review & Customize Base Extracted Data</span>
+            <span style="font-size:0.75rem; font-weight:600; background:rgba(34,197,94,0.15); color:#4ade80; border:1px solid rgba(34,197,94,0.3); padding:3px 10px; border-radius:9999px;">Data Grid</span>
+        </div>
+        """, unsafe_allow_html=True)
+        st.caption("Double-click any cell below to modify values, add new rows (+), search (🔍), or hide columns (👁) before downloading.")
         
         normalized_dfs = {}
         for idx, tbl in enumerate(tables):
@@ -775,8 +1117,8 @@ if "extracted_data" in st.session_state:
             df = df.rename(columns={c: normalize_column_header(c) for c in df.columns})
             
             badge_html = f'''
-            <div style="display:flex; align-items:center; gap:12px; margin-top:1.8rem; margin-bottom:0.75rem;">
-                <span style="font-size:1.25rem; font-weight:700; color:#ffffff; font-family:'Space Grotesk', sans-serif;">📊 {table_name}</span>
+            <div style="display:flex; align-items:center; gap:12px; margin-top:1.5rem; margin-bottom:0.6rem;">
+                <span style="font-size:1.15rem; font-weight:700; color:#ffffff; font-family:'Space Grotesk', sans-serif;">📊 {table_name}</span>
                 <span style="font-size:0.75rem; font-weight:600; background:rgba(34,197,94,0.15); color:#4ade80; border:1px solid rgba(34,197,94,0.3); padding:3px 10px; border-radius:9999px;">{len(df)} Records</span>
             </div>
             '''
@@ -787,11 +1129,11 @@ if "extracted_data" in st.session_state:
                 key=f"editor_{idx}", 
                 num_rows="dynamic", 
                 use_container_width=True,
-                height=min(450, 45 + len(df) * 35)
+                height=min(420, 45 + len(df) * 35)
             )
             normalized_dfs[table_name] = edited_df
 
-        # Consolidated Master Dataframe for Dashboards
+        # Consolidated Master Dataframe
         if len(normalized_dfs) > 1:
             try:
                 master_df = pd.concat(list(normalized_dfs.values()), ignore_index=True)
@@ -804,8 +1146,29 @@ if "extracted_data" in st.session_state:
         else:
             master_df = list(normalized_dfs.values())[0]
 
+        # Base Excel Map
+        base_sheets_map = {}
+        if len(normalized_dfs) > 1:
+            base_sheets_map["Master Combined Records"] = master_df
+        for name, df in normalized_dfs.items():
+            clean_name = "".join(c for c in name if c.isalnum() or c in (' ', '_', '-')).strip()
+            base_sheets_map[clean_name[:31]] = df
+            
+        base_excel_bytes = generate_base_excel_workbook(base_sheets_map)
+        
+        # Mode 1 Download Button
+        st.markdown("<div style='height: 6px;'></div>", unsafe_allow_html=True)
+        st.download_button(
+            label="📥 Download Clean Base Excel Workbook (.xlsx)",
+            data=base_excel_bytes,
+            file_name="sheetgen_base_data.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            type="primary",
+            use_container_width=True
+        )
+
         # =========================================================================
-        # 📊 AI VISUAL ANALYTICS & DASHBOARD SUITE
+        # MODE 2 & MODE 3: VISUAL ANALYTICS & DASHBOARDS
         # =========================================================================
         st.markdown("---")
         st.markdown("""
@@ -814,14 +1177,13 @@ if "extracted_data" in st.session_state:
             <span style="font-size:0.8rem; font-weight:600; background:rgba(56,189,248,0.15); color:#38bdf8; border:1px solid rgba(56,189,248,0.3); padding:3px 12px; border-radius:9999px;">Interactive BI</span>
         </div>
         """, unsafe_allow_html=True)
-        st.caption("View instant smart analytics or talk with the AI Copilot to generate any custom visualization dynamically.")
+        st.caption("Review auto-generated dashboards or chat with AI to build custom formula-linked spreadsheets.")
 
-        tab_auto, tab_copilot = st.tabs(["⚡ Instant Smart Dashboard", "💬 Talk with AI (Custom Charts Copilot)"])
+        tab_auto, tab_copilot = st.tabs(["⚡ Mode 2: Smart Auto Dashboard", "💬 Mode 3: Talk with AI (Custom Copilot)"])
 
-        # TAB 1: INSTANT SMART DASHBOARD
+        # TAB 1: MODE 2 - SMART AUTO DASHBOARD
         with tab_auto:
             kpi_col1, kpi_col2, kpi_col3 = st.columns(3)
-            
             with kpi_col1:
                 st.markdown(f"""
                 <div class="kpi-stat-card">
@@ -855,56 +1217,60 @@ if "extracted_data" in st.session_state:
                 </div>
                 """, unsafe_allow_html=True)
 
-            # Auto-Generated High-Impact Charts
+            # In-Browser Plotly Preview
             c_chart1, c_chart2 = st.columns(2)
             with c_chart1:
-                spec1 = {
-                    "chart_type": "bar",
-                    "title": f"Distribution by {cat_col}",
-                    "group_by_col": cat_col,
-                    "aggregation": "count",
-                    "top_n": 8
-                }
+                spec1 = {"chart_type": "bar", "title": f"Distribution by {cat_col}", "group_by_col": cat_col, "aggregation": "count", "top_n": 8}
                 fig1 = render_plotly_chart(master_df, spec1)
                 st.plotly_chart(fig1, use_container_width=True)
 
             with c_chart2:
-                spec2 = {
-                    "chart_type": "donut",
-                    "title": f"Proportion of {sec_cat_col}",
-                    "group_by_col": sec_cat_col,
-                    "aggregation": "count",
-                    "top_n": 6
-                }
+                spec2 = {"chart_type": "donut", "title": f"Proportion of {sec_cat_col}", "group_by_col": sec_cat_col, "aggregation": "count", "top_n": 6}
                 fig2 = render_plotly_chart(master_df, spec2)
                 st.plotly_chart(fig2, use_container_width=True)
 
-        # TAB 2: TALK WITH AI (CUSTOM CHART COPILOT)
+            # Mode 2 Live Formula Excel Download
+            st.markdown("<br>", unsafe_allow_html=True)
+            smart_excel_bytes = generate_smart_dashboard_excel_workbook(base_sheets_map, master_df)
+            st.download_button(
+                label="📥 Download Excel with Smart Dashboard & Live Formulas (.xlsx)",
+                data=smart_excel_bytes,
+                file_name="sheetgen_smart_dashboard_workbook.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key="dl_smart_dash_btn",
+                use_container_width=True
+            )
+
+        # TAB 2: MODE 3 - TALK WITH AI (CUSTOM COPILOT)
         with tab_copilot:
             st.markdown("#### 💬 Ask AI to Build Any Custom Visual Chart")
             st.caption("Tell the AI what you want to visualize (e.g., *'Create a breakdown of records by State'*, *'Show me a bar chart comparing managers'*, or *'Plot a pie chart of status remarks'*).")
             
+            # Pre-Question Pills
+            st.markdown("<div style='font-size:0.8rem; font-weight:700; color:#38bdf8; margin-bottom:6px;'>💡 Pre-Built Quick Questions (Click to populate):</div>", unsafe_allow_html=True)
+            col_q1, col_q2, col_q3 = st.columns(3)
+            
+            selected_prompt = ""
+            with col_q1:
+                if st.button("📊 Breakdown by Category / Region", key="pq_1", use_container_width=True):
+                    selected_prompt = "Generate a bar chart showing distribution across primary categories or regions."
+            with col_q2:
+                if st.button("🍩 Top 5 Contributors (Donut Chart)", key="pq_2", use_container_width=True):
+                    selected_prompt = "Show a donut chart of top 5 groups or contributors with highest representation."
+            with col_q3:
+                if st.button("🔍 Exception & Remarks Audit", key="pq_3", use_container_width=True):
+                    selected_prompt = "Analyze remarks or status flags and display a visual breakdown of exceptions."
+
             user_chart_prompt = st.text_input(
                 "Describe the chart or metrics you want to build:",
-                placeholder="e.g. Create a donut chart for states and compare headcount by reporting manager...",
+                value=selected_prompt,
+                placeholder="e.g. Compare total headcount across regions and show a pie chart of statuses...",
                 key="user_chart_prompt_input"
             )
-            
-            st.markdown("<div style='font-size:0.75rem; color:#94a3b8; margin-bottom:6px;'>💡 Quick Ideas (Click to populate):</div>", unsafe_allow_html=True)
-            col_q1, col_q2, col_q3 = st.columns(3)
-            with col_q1:
-                if st.button("📊 Breakdown by Category / Region", use_container_width=True):
-                    user_chart_prompt = "Generate a bar chart showing distribution across primary categories or regions."
-            with col_q2:
-                if st.button("🍩 Top 5 Contributors (Donut Chart)", use_container_width=True):
-                    user_chart_prompt = "Show a donut chart of top 5 groups or contributors with highest representation."
-            with col_q3:
-                if st.button("🔍 Exception & Remarks Audit", use_container_width=True):
-                    user_chart_prompt = "Analyze remarks or status flags and display a visual breakdown of exceptions."
 
             if st.button("✨ Generate Custom Visual Dashboard", type="primary", use_container_width=True):
                 if not user_chart_prompt:
-                    st.warning("Please enter a description or pick a quick idea above.")
+                    st.warning("Please enter a description or pick a quick question above.")
                 else:
                     with st.spinner("AI Copilot is structuring your custom visualization..."):
                         ai_spec = ask_ai_for_dashboard_spec(master_df, user_chart_prompt, api_key)
@@ -913,6 +1279,7 @@ if "extracted_data" in st.session_state:
                         else:
                             st.session_state["custom_ai_spec"] = ai_spec
 
+            # In-Browser Preview & Custom Excel Download
             if "custom_ai_spec" in st.session_state:
                 ai_spec = st.session_state["custom_ai_spec"]
                 st.markdown("<br>", unsafe_allow_html=True)
@@ -942,30 +1309,14 @@ if "extracted_data" in st.session_state:
                             
                 if ai_spec.get("ai_insights"):
                     st.info(f"💡 **AI Copilot Insight:** {ai_spec.get('ai_insights')}")
-
-        # Multi-Tab Styled Excel Workbook Generator (Single Master Output)
-        sheets_for_workbook = {}
-        if len(normalized_dfs) > 1:
-            sheets_for_workbook["Master Combined Records"] = master_df
-
-        for name, df in normalized_dfs.items():
-            clean_name = "".join(c for c in name if c.isalnum() or c in (' ', '_', '-')).strip()
-            sheets_for_workbook[clean_name[:31]] = df
-            
-        excel_data = generate_styled_excel_workbook(sheets_for_workbook)
-
-        # Final Download Action Section
-        st.markdown("---")
-        st.markdown("### 📥 Download Final Excel Workbook")
-        st.caption("Click below to download your complete, customized spreadsheet (.xlsx) containing all edited tabs and the master summary sheet.")
-        
-        button_label = "📥 Download Final Excel Workbook (.xlsx)" if len(normalized_dfs) == 1 else f"📥 Download Final Multi-Sheet Excel Workbook ({len(normalized_dfs)} Sheets + Master Tab)"
-        
-        st.download_button(
-            label=button_label,
-            data=excel_data,
-            file_name="sheetgen_final_workbook.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            type="primary",
-            use_container_width=True
-        )
+                    
+                # Mode 3 Download Button
+                custom_ai_excel_bytes = generate_ai_copilot_excel_workbook(base_sheets_map, master_df, ai_spec)
+                st.download_button(
+                    label="📥 Download AI Customized Dashboard & Live Formulas (.xlsx)",
+                    data=custom_ai_excel_bytes,
+                    file_name="sheetgen_ai_custom_dashboard.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key="dl_ai_dash_btn",
+                    use_container_width=True
+                )
