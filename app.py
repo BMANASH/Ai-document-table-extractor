@@ -186,21 +186,21 @@ h1, h2, h3 {
     fill: currentColor !important;
 }
 
-/* Single Master Excel Download Button (Emerald Green) */
+/* Master Download Button Styling (Pure Excel Emerald Green) */
 .stDownloadButton > button {
     background: linear-gradient(135deg, #107C41 0%, #15803d 100%) !important;
     color: #ffffff !important;
     font-weight: 700 !important;
-    font-size: 1.05rem !important;
+    font-size: 1.1rem !important;
     border: none !important;
     border-radius: 12px !important;
-    padding: 0.85rem 2rem !important;
+    padding: 0.9rem 2.2rem !important;
     box-shadow: 0 4px 25px rgba(16, 124, 65, 0.45) !important;
     transition: all 0.25s ease-in-out !important;
 }
 .stDownloadButton > button:hover {
     transform: translateY(-2px) !important;
-    box-shadow: 0 6px 30px rgba(16, 124, 65, 0.75) !important;
+    box-shadow: 0 6px 32px rgba(16, 124, 65, 0.75) !important;
 }
 
 .stButton > button[kind="primary"] {
@@ -502,8 +502,8 @@ if "extracted_data" in st.session_state:
         st.warning("No tables found in the uploaded file(s).")
     else:
         st.markdown("---")
-        st.subheader("✏️ Review & Edit Tables")
-        st.caption("Use the top-right toolbar on each table to Add Rows (+), Hide/Show Columns (👁), Search (🔍), or go Fullscreen (⛶). Double-click any cell to edit values directly.")
+        st.subheader("✏️ Review & Customize Your Extracted Excel")
+        st.caption("Edit and refine your displayed Excel tables below according to your work needs. You can double-click any cell to modify values, add new rows (+), search (🔍), or hide columns (👁) before downloading your final workbook.")
         
         edited_dfs = {}
         for idx, tbl in enumerate(tables):
@@ -559,16 +559,17 @@ if "extracted_data" in st.session_state:
                 
         excel_data = excel_buffer.getvalue()
 
-        # Single Master Download Action Bar
+        # Final Download Action Section
         st.markdown("---")
-        st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+        st.markdown("### 📥 Download Final Excel Workbook")
+        st.caption("Click below to download your complete, customized spreadsheet (.xlsx) containing all edited tabs and the master summary sheet.")
         
-        button_label = "📥 Download Excel Workbook (.xlsx)" if len(edited_dfs) == 1 else f"📥 Download Complete Multi-Sheet Excel Workbook ({len(edited_dfs)} Sheets + Master Tab)"
+        button_label = "📥 Download Final Excel Workbook (.xlsx)" if len(edited_dfs) == 1 else f"📥 Download Final Multi-Sheet Excel Workbook ({len(edited_dfs)} Sheets + Master Tab)"
         
         st.download_button(
             label=button_label,
             data=excel_data,
-            file_name="sheetgen_extracted_workbook.xlsx",
+            file_name="sheetgen_final_workbook.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             type="primary",
             use_container_width=True
