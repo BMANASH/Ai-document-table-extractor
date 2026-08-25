@@ -194,9 +194,15 @@ div[data-testid="stFileUploader"] label {
     margin-bottom: 0.6rem !important;
 }
 
-/* Hide Streamlit default 200MB file size limit text */
-div[data-testid="stFileUploader"] small, div[data-testid="stFileUploader"] [data-testid="stCaptionContainer"] {
+/* Strictly hide all default Streamlit file-size/file-type subtext */
+div[data-testid="stFileUploader"] small,
+div[data-testid="stFileUploader"] [data-testid="stCaptionContainer"],
+div[data-testid="stFileUploader"] [data-testid="stFileUploaderDropzoneInstructions"],
+div[data-testid="stFileUploader"] span:has(> small),
+[data-testid="stFileUploaderDropzoneInstructions"] {
     display: none !important;
+    visibility: hidden !important;
+    height: 0px !important;
 }
 
 div[data-testid="stFileUploader"] section button {
@@ -214,13 +220,11 @@ div[data-testid="stFileUploader"] section button {
     background: rgba(15, 23, 42, 0.7);
     border: 1px solid rgba(56, 189, 248, 0.25);
     border-radius: 12px;
-    padding: 10px 16px;
+    padding: 12px 16px;
     margin-bottom: 12px;
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
+    flex-direction: column;
+    gap: 8px;
 }
 .upload-limits-title {
     font-size: 0.8rem;
@@ -236,8 +240,11 @@ div[data-testid="stFileUploader"] section button {
     color: #cbd5e1;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    padding: 3px 10px;
+    padding: 4px 12px;
     border-radius: 9999px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .kpi-stat-card {
@@ -1298,16 +1305,15 @@ def show_preview_modal(file_name, file_bytes, mime_type):
     elif "pdf" in mime_type:
         st.info(f"📑 PDF File: **{file_name}** ({len(file_bytes)/1024:.1f} KB)")
 
-# Custom Upload Limit Card
+# Custom Distinct Upload Guidelines Card
 st.markdown("""
 <div class="upload-limits-card">
     <div class="upload-limits-title">
-        <span>📌 Recommended Batch Limits for Optimal Extraction Speed:</span>
+        <span>📌 Supported Batch Upload Formats & Limits:</span>
     </div>
     <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-        <span class="upload-limits-pill">🖼️ Images: Max 6 Pages / Photos</span>
-        <span class="upload-limits-pill">📑 PDFs: Max 2 Files</span>
-        <span class="upload-limits-pill">📦 Total Combined Size: Under 20 MB</span>
+        <span class="upload-limits-pill">🖼️ Images: Max 6 Pages / Photos (Batch Under 20 MB)</span>
+        <span class="upload-limits-pill">📑 PDFs: Max 2 Files (Batch Under 20 MB)</span>
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -1321,16 +1327,26 @@ uploaded_files = st.file_uploader(
 
 if uploaded_files:
     # Validate Upload Batch Constraints
-    img_count = sum(1 for f in uploaded_files if "image" in f.type)
-    pdf_count = sum(1 for f in uploaded_files if "pdf" in f.type)
-    total_mb = sum(len(f.getvalue()) for f in uploaded_files) / (1024 * 1024)
+    img_files = [f for f in uploaded_files if "image" in f.type]
+    pdf_files = [f for f in uploaded_files if "pdf" in f.type]
+    
+    img_count = len(img_files)
+    pdf_count = len(pdf_files)
+    
+    total_img_mb = sum(len(f.getvalue()) for f in img_files) / (1024 * 1024)
+    total_pdf_mb = sum(len(f.getvalue()) for f in pdf_files) / (1024 * 1024)
 
-    if img_count > 6:
-        st.warning(f"⚠️ **Upload Notice:** You have uploaded {img_count} images. For optimal accuracy and speed, we recommend a maximum of 6 images per batch.")
+    # Validate Mixed Format Uploads
+    if img_count > 0 and pdf_count > 0:
+        st.warning("⚠️ **Format Notice:** Please upload either Images or PDFs in a single batch, not both mixed together.")
+    elif img_count > 6:
+        st.warning(f"⚠️ **Upload Notice:** You have uploaded {img_count} images. Please upload a maximum of 6 images per batch.")
+    elif total_img_mb > 20:
+        st.warning(f"⚠️ **File Size Notice:** Total image size is {total_img_mb:.1f} MB. Please ensure your image batch remains under 20 MB.")
     elif pdf_count > 2:
-        st.warning(f"⚠️ **Upload Notice:** You have uploaded {pdf_count} PDF files. Please limit your batch to a maximum of 2 PDFs at a time.")
-    elif total_mb > 20:
-        st.warning(f"⚠️ **File Size Notice:** Total upload size is {total_mb:.1f} MB. Please ensure combined files remain under 20 MB for smooth processing.")
+        st.warning(f"⚠️ **Upload Notice:** You have uploaded {pdf_count} PDF files. Please upload a maximum of 2 PDF files per batch.")
+    elif total_pdf_mb > 20:
+        st.warning(f"⚠️ **File Size Notice:** Total PDF size is {total_pdf_mb:.1f} MB. Please ensure your PDF batch remains under 20 MB.")
 
     if not api_key:
         st.error("⚠️ System Error: GEMINI_API_KEY not found in Streamlit Secrets. Please add it to your app settings.")
