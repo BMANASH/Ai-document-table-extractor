@@ -30,7 +30,7 @@ st.markdown("""
     font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
-/* Lock Sidebar to Static Width (Disables resizing drag line) */
+/* Lock Sidebar to Static Width */
 section[data-testid="stSidebar"] {
     min-width: 300px !important;
     max-width: 300px !important;
@@ -186,8 +186,8 @@ with st.sidebar:
     st.markdown("<div style='font-size:0.8rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:#94a3b8; margin-bottom:10px;'>Core Capabilities</div>", unsafe_allow_html=True)
     
     sidebar_items_html = (
-        '<div class="sidebar-item"><div class="sidebar-title">📑 PDF & Image Parsing</div>'
-        '<div class="sidebar-desc">Scans multi-page financial statements, bills, and data sheets.</div></div>'
+        '<div class="sidebar-item"><div class="sidebar-title">📑 Batch File & PDF Parsing</div>'
+        '<div class="sidebar-desc">Upload multiple images or multi-page documents at once.</div></div>'
         '<div class="sidebar-item"><div class="sidebar-title">🗃️ Multi-Table Isolation</div>'
         '<div class="sidebar-desc">Separates distinct tables cleanly into separate tabs.</div></div>'
         '<div class="sidebar-item"><div class="sidebar-title">🧹 Number Sanitization</div>'
@@ -207,15 +207,15 @@ st.markdown('<div class="status-badge">⚡ Instant Document to Spreadsheet</div>
 
 main_header_html = f'<div class="header-wrapper">{EXCEL_ICON_MAIN}<div class="excel-title-text">SheetGen AI</div></div>'
 st.markdown(main_header_html, unsafe_allow_html=True)
-st.markdown('<div class="sub-heading">Upload any PDF or image table → Automatically convert it to a clean, editable Excel file.</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-heading">Upload single or batch images & PDFs → Automatically convert them to clean, editable Excel workbooks.</div>', unsafe_allow_html=True)
 
 # 3 Floating Motion Feature Cards
 col_card1, col_card2, col_card3 = st.columns(3)
 with col_card1:
     card1_html = (
         '<div class="feature-card card-anim-1">'
-        '<div style="font-size: 1.15rem; font-weight:700; color:#4ade80; margin-bottom:4px;">1. Upload File</div>'
-        '<div style="font-size:0.85rem; color:#94a3b8; line-height:1.4;">Drop scanned photos or multi-page PDFs containing data tables.</div>'
+        '<div style="font-size: 1.15rem; font-weight:700; color:#4ade80; margin-bottom:4px;">1. Upload File(s)</div>'
+        '<div style="font-size:0.85rem; color:#94a3b8; line-height:1.4;">Drop single or multiple images/PDFs containing tabular data.</div>'
         '</div>'
     )
     st.markdown(card1_html, unsafe_allow_html=True)
@@ -240,28 +240,29 @@ with col_card3:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# Helper Function: Process via Gemini Vision
-def process_document(file_bytes, mime_type, key):
+# Helper Function: Process Multi-file Batch via Gemini Vision
+def process_documents(files_data, key):
     client = genai.Client(api_key=key)
     prompt = """
     You are an expert Data Specialist.
-    Analyze the uploaded document or image carefully:
+    Analyze all the uploaded document(s) and/or image(s) carefully:
     
     1. EXTRACT ALL DISTINCT TABLES:
-       - Identify each separate table clearly (e.g. Table 1, Table 2).
-       - Clean numbers: remove currency symbols and footnote markers so Excel can calculate sums directly.
+       - Identify every separate table clearly across all uploaded files and pages.
+       - Assign an intuitive, distinct title for each detected table (e.g. Employee Roster, P&L Statement, Invoice Breakdown).
+       - Clean numbers: remove stray symbols, handwritten noise, and currency prefixes so Excel can sum values directly.
        - Provide standard column headers.
        
     2. SUMMARY & PATTERNS:
-       - What kind of data is this (Financials, Sales, Inventory, Invoice)?
-       - Write a brief, easy-to-read summary with key insights and trends.
+       - What kind of data is this overall (e.g., Financial Ledger, Roster, Inventory, Attendance Register)?
+       - Write a concise, bulleted executive summary with patterns, key observations, and totals across the uploaded files.
 
     Return your response strictly as valid JSON:
     {
-      "analysis": "Short Markdown summary of key business insights.",
+      "analysis": "Short Markdown summary of key business insights across all files.",
       "tables": [
         {
-          "table_name": "Table Name",
+          "table_name": "Intuitive Table Name",
           "headers": ["Header 1", "Header 2", "Header 3"],
           "rows": [
             ["Row1 Col1", "Row1 Col2", "Row1 Col3"],
@@ -271,47 +272,56 @@ def process_document(file_bytes, mime_type, key):
       ]
     }
     """
+    contents = []
+    for file_bytes, mime_type in files_data:
+        contents.append(types.Part.from_bytes(data=file_bytes, mime_type=mime_type))
+    contents.append(prompt)
+
     response = client.models.generate_content(
         model='gemini-2.5-flash',
-        contents=[
-            types.Part.from_bytes(data=file_bytes, mime_type=mime_type),
-            prompt
-        ],
+        contents=contents,
         config=types.GenerateContentConfig(
             response_mime_type="application/json"
         )
     )
     return response.text
 
-# Document Upload Section
-uploaded_file = st.file_uploader("Drop your PDF document or image here", type=["pdf", "png", "jpg", "jpeg"])
+# Document Upload Section with Multiple File Support
+uploaded_files = st.file_uploader(
+    "Drop your PDF document(s) or images here", 
+    type=["pdf", "png", "jpg", "jpeg"], 
+    accept_multiple_files=True
+)
 
-if uploaded_file:
+if uploaded_files:
     if not api_key:
         st.error("⚠️ System Error: API Key not configured in Streamlit Secrets. Please add GEMINI_API_KEY to your app secrets.")
     else:
-        file_type = uploaded_file.type
-        file_bytes = uploaded_file.read()
+        files_data = []
+        for file in uploaded_files:
+            file_bytes = file.read()
+            files_data.append((file_bytes, file.type))
         
         col_prev, col_action = st.columns([1, 2])
         with col_prev:
-            st.subheader("📄 Uploaded File Preview")
-            if "image" in file_type:
-                img = Image.open(io.BytesIO(file_bytes))
-                st.image(img, use_container_width=True)
-            elif file_type == "application/pdf":
-                st.info(f"Loaded PDF: **{uploaded_file.name}** ({len(file_bytes)/1024:.1f} KB)")
+            st.subheader(f"📄 Uploaded Files ({len(uploaded_files)})")
+            for idx, file in enumerate(uploaded_files):
+                if "image" in file.type:
+                    img = Image.open(io.BytesIO(files_data[idx][0]))
+                    st.image(img, caption=file.name, use_container_width=True)
+                elif file.type == "application/pdf":
+                    st.info(f"📑 PDF: **{file.name}** ({len(files_data[idx][0])/1024:.1f} KB)")
                 
         with col_action:
             st.subheader("⚡ Convert to Excel")
-            st.caption("Click below to extract all tables and generate your spreadsheet.")
+            st.caption(f"Process all {len(uploaded_files)} file(s), extract tables, and compile into a unified spreadsheet.")
             if st.button("🚀 Extract Tables & Convert to Excel", type="primary", use_container_width=True):
-                with st.spinner("Reading document and generating Excel sheets..."):
+                with st.spinner(f"Analyzing {len(uploaded_files)} file(s) and generating Excel workbook..."):
                     try:
-                        raw_response = process_document(file_bytes, file_type, api_key)
+                        raw_response = process_documents(files_data, api_key)
                         data = json.loads(raw_response)
                         st.session_state["extracted_data"] = data
-                        st.toast("Extraction complete!", icon="✅")
+                        st.toast(f"Successfully processed {len(uploaded_files)} file(s)!", icon="✅")
                     except Exception as e:
                         st.error(f"Processing Error: {e}")
 
@@ -325,11 +335,11 @@ if "extracted_data" in st.session_state:
     
     tables = data.get("tables", [])
     if not tables:
-        st.warning("No tables found in this file.")
+        st.warning("No tables found in the uploaded file(s).")
     else:
         st.markdown("---")
         st.subheader("✏️ Review & Edit Tables")
-        st.caption("Double-click any cell below to fix any typos before downloading.")
+        st.caption("You can double-click any cell below to fix any typos before downloading.")
         
         edited_dfs = {}
         for idx, tbl in enumerate(tables):
@@ -355,9 +365,9 @@ if "extracted_data" in st.session_state:
         c1, c2 = st.columns(2)
         with c1:
             st.download_button(
-                label="📥 Download Excel File (.xlsx)",
+                label="📥 Download Unified Excel File (.xlsx)",
                 data=excel_data,
-                file_name="extracted_data.xlsx",
+                file_name="sheetgen_extracted_data.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 type="primary",
                 use_container_width=True
@@ -367,11 +377,11 @@ if "extracted_data" in st.session_state:
                 first_df = list(edited_dfs.values())[0]
                 csv_data = first_df.to_csv(index=False).encode('utf-8')
                 st.download_button(
-                    label="📥 Download CSV File (.csv)",
+                    label="📥 Download Flat File (.csv)",
                     data=csv_data,
-                    file_name="extracted_table.csv",
+                    file_name="sheetgen_extracted_table.csv",
                     mime="text/csv",
                     use_container_width=True
                 )
             else:
-                st.info("ℹ️ Multiple tables detected: Use Excel download to keep them in separate sheets.")
+                st.info("ℹ️ Multiple tables detected: Download as Excel to preserve multi-sheet tabs.")
