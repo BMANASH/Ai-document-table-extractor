@@ -4,6 +4,7 @@ import io
 import json
 import os
 import re
+import time
 from PIL import Image
 from pypdf import PdfReader
 import google.generativeai as genai
@@ -498,56 +499,6 @@ def profile_dataset_metrics(df):
                 "top_5_frequencies": top_counts
             }
     return summary
-
-# =========================================================================
-# STRATEGIC DYNAMIC MODEL DISCOVERY & SUITABILITY SELECTOR
-# =========================================================================
-def discover_and_rank_active_models(key_str):
-    genai.configure(api_key=key_str)
-    discovered = []
-    try:
-        all_models = genai.list_models()
-        for m in all_models:
-            methods = getattr(m, 'supported_generation_methods', [])
-            name = m.name.replace("models/", "") if hasattr(m, 'name') else str(m)
-            # Filter for active multimodal generation models
-            if "generateContent" in methods and "gemini" in name.lower():
-                discovered.append(name)
-    except Exception:
-        pass
-        
-    # Strategic ranking based on vision capability and speed
-    def model_suitability_score(name):
-        n = name.lower()
-        if "embed" in n or "imagen" in n or "aqa" in n:
-            return -100
-        score = 0
-        if "2.0-flash" in n:
-            score += 100
-        elif "1.5-flash" in n:
-            score += 80
-        elif "1.5-pro" in n:
-            score += 70
-        elif "2.0-pro" in n:
-            score += 60
-        elif "flash" in n:
-            score += 50
-        elif "pro" in n:
-            score += 40
-        else:
-            score += 10
-        # Deprecate older/experimental endpoints
-        if "preview" in n or "exp" in n:
-            score -= 5
-        return score
-
-    ranked_models = sorted(discovered, key=model_suitability_score, reverse=True)
-    # Ensure fallbacks if listing is restricted by account
-    fallbacks = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"]
-    for fb in fallbacks:
-        if fb not in ranked_models:
-            ranked_models.append(fb)
-    return [m for m in ranked_models if model_suitability_score(m) > -50]
 
 # =========================================================================
 # EXCEL GENERATOR 1: BASE DATA ONLY (.XLSX)
@@ -1075,10 +1026,10 @@ def generate_ai_copilot_excel_workbook(sheets_map, master_df, ai_spec):
     return buf.getvalue()
 
 # =========================================================================
-# UNIVERSAL EXTRACTION ENGINE WITH STRATEGIC MODEL SELECTION
+# FAST MULTIMODAL EXTRACTION ENGINE WITH AUTOMATED RETRY BACKOFF
 # =========================================================================
 def execute_extraction_cascade(files_data, key_str):
-    active_models = discover_and_rank_active_models(key_str)
+    genai.configure(api_key=key_str)
     
     prompt = """
     You are an expert Data Engineer and OCR Analyst.
@@ -1122,30 +1073,35 @@ def execute_extraction_cascade(files_data, key_str):
             
     contents.append(prompt)
 
+    model_cascade = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"]
     last_err = None
-    for model_name in active_models:
-        try:
-            model = genai.GenerativeModel(model_name)
-            response = model.generate_content(
-                contents,
-                generation_config={"response_mime_type": "application/json"}
-            )
-            if response and response.text:
-                raw_text = response.text.strip()
-                if "```json" in raw_text:
-                    raw_text = raw_text.split("```json")[1].split("```")[0].strip()
-                elif "```" in raw_text:
-                    raw_text = raw_text.split("```")[1].split("```")[0].strip()
-                return raw_text, model_name
-        except Exception as err:
-            last_err = err
-            continue
+    
+    for model_name in model_cascade:
+        for attempt in range(2):
+            try:
+                model = genai.GenerativeModel(model_name)
+                response = model.generate_content(
+                    contents,
+                    generation_config={"response_mime_type": "application/json"},
+                    request_options={"timeout": 25}
+                )
+                if response and response.text:
+                    raw_text = response.text.strip()
+                    if "```json" in raw_text:
+                        raw_text = raw_text.split("```json")[1].split("```")[0].strip()
+                    elif "```" in raw_text:
+                        raw_text = raw_text.split("```")[1].split("```")[0].strip()
+                    return raw_text, model_name
+            except Exception as err:
+                last_err = err
+                time.sleep(1.5)
+                continue
 
-    raise Exception(f"Extraction failed across active models. Last Error: {last_err}")
+    raise Exception(f"HIGH_TRAFFIC_ALERT: {last_err}")
 
-# AI Custom Dashboard Copilot Query Function with Dynamic Model Selection
+# Fast AI Custom Dashboard Copilot Function with Backoff
 def ask_ai_for_dashboard_spec(df, user_instruction, key_str):
-    active_models = discover_and_rank_active_models(key_str)
+    genai.configure(api_key=key_str)
     metrics_context = profile_dataset_metrics(df)
     
     prompt = f"""
@@ -1180,10 +1136,15 @@ def ask_ai_for_dashboard_spec(df, user_instruction, key_str):
     }}
     """
     
-    for m in active_models:
+    model_cascade = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"]
+    for model_name in model_cascade:
         try:
-            model = genai.GenerativeModel(m)
-            res = model.generate_content(prompt, generation_config={"response_mime_type": "application/json"})
+            model = genai.GenerativeModel(model_name)
+            res = model.generate_content(
+                prompt, 
+                generation_config={"response_mime_type": "application/json"},
+                request_options={"timeout": 15}
+            )
             if res and res.text:
                 t = res.text.strip()
                 if "```json" in t:
@@ -1332,10 +1293,10 @@ if uploaded_files:
                     <div class="spinner-radar-ring"></div>
                     <div class="glass-loading-title">AI Vision Processing & Formatting</div>
                     <div class="glass-loading-desc">
-                        Discovering available active models, isolating tabular rows, sanitizing values & building visual dashboard metrics.
+                        Analyzing visual matrix, isolating tabular rows, sanitizing values & building visual dashboard metrics.
                     </div>
                     <div class="status-pills-row">
-                        <span class="status-pill">🔍 Active Model Discovery</span>
+                        <span class="status-pill">🔍 OCR Matrix Scan</span>
                         <span class="status-pill">🧹 Noise Sanitization</span>
                         <span class="status-pill">📑 Table Structuring</span>
                         <span class="status-pill">📊 .xlsx Synthesis</span>
@@ -1353,7 +1314,11 @@ if uploaded_files:
                     st.toast(f"Extracted successfully via {used_model}!", icon="⚡")
                 except Exception as e:
                     loader_container.empty()
-                    st.error(f"Processing Error: {e}")
+                    err_msg = str(e)
+                    if "HIGH_TRAFFIC_ALERT" in err_msg or "429" in err_msg or "503" in err_msg or "ResourceExhausted" in err_msg:
+                        st.warning("⚠️ **High Traffic Alert:** The AI processing servers are temporarily experiencing high demand or rate limits. Please wait 10–15 seconds and click **'🚀 Extract Tables & Convert to Excel'** again.")
+                    else:
+                        st.error(f"Processing Error: {err_msg}")
 
 # =========================================================================
 # MAIN RESULTS & 3-MODE WORKSPACE
@@ -1535,7 +1500,7 @@ if "extracted_data" in st.session_state:
                         st.session_state["custom_ai_spec"] = ai_spec
                         st.session_state["active_chart_prompt"] = query_text
                     else:
-                        st.error("Could not generate chart specification. Please rephrase your query.")
+                        st.warning("⚠️ Could not generate chart specification due to server load. Please try again in a few seconds.")
 
             # Pre-Built Quick Question Action Chips
             st.markdown("<div style='font-size:0.8rem; font-weight:700; color:#38bdf8; margin-bottom:6px;'>💡 Pre-Built Quick Questions (Click to auto-generate):</div>", unsafe_allow_html=True)
