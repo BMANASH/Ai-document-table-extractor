@@ -21,17 +21,27 @@ st.set_page_config(
 # Fetch API Key silently from Streamlit Secrets or Environment
 api_key = st.secrets.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY", "")
 
-# Modern Dark Theme, Static Sidebar Lock & Motion UI CSS
+# Modern Dark Theme, Universal Dark Mode Lock & Motion UI CSS
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap');
 
-.stApp {
+/* Force Global Dark Backgrounds on all devices */
+html, body, [data-testid="stAppViewContainer"], .stApp {
     background: radial-gradient(circle at 50% 0%, #111827 0%, #080b11 75%, #05070a 100%) !important;
-    color: #e2e8f0;
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    background-color: #080b11 !important;
+    color: #e2e8f0 !important;
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
 }
 
+/* Force Header bar dark */
+header[data-testid="stHeader"], [data-testid="stHeader"] {
+    background-color: rgba(8, 11, 17, 0.8) !important;
+    backdrop-filter: blur(10px) !important;
+    color: #e2e8f0 !important;
+}
+
+/* Lock Sidebar to Static Width */
 section[data-testid="stSidebar"] {
     min-width: 300px !important;
     max-width: 300px !important;
@@ -76,6 +86,20 @@ h1, h2, h3 {
     margin-bottom: 1.75rem;
 }
 
+/* Steps Section Header */
+.steps-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #38bdf8;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Floating Motion UI Animations */
 @keyframes floatCard1 {
     0% { transform: translateY(0px); }
     50% { transform: translateY(-7px); }
@@ -143,18 +167,6 @@ h1, h2, h3 {
     color: #4ade80;
     border: 1px solid rgba(34, 197, 94, 0.3);
     margin-bottom: 1rem;
-}
-
-/* Compact Document File Card */
-.doc-file-card {
-    background: rgba(17, 24, 39, 0.85);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 10px;
-    padding: 10px 14px;
-    margin-bottom: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
 }
 
 /* ENLARGED & PERMANENTLY VISIBLE DATA EDITOR ACTION TOOLBAR */
@@ -231,6 +243,13 @@ div[data-testid="stFileUploader"] {
     border-radius: 14px !important;
     padding: 1.5rem !important;
 }
+
+/* Dialog Box Dark Theme */
+div[data-testid="stModal"] > div {
+    background-color: #0d121f !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: #e2e8f0 !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -269,13 +288,16 @@ main_header_html = f'<div class="header-wrapper">{EXCEL_ICON_MAIN}<div class="ex
 st.markdown(main_header_html, unsafe_allow_html=True)
 st.markdown('<div class="sub-heading">Upload single or batch images & PDFs → Automatically convert them to clean, editable Excel workbooks.</div>', unsafe_allow_html=True)
 
-# 3 Floating Motion Feature Cards
+# 3 Step Visual Workflow Guide Header
+st.markdown('<div class="steps-title">📋 Steps to Convert & Download Your Excel Sheet</div>', unsafe_allow_html=True)
+
+# 3 Floating Motion Feature Cards (Informational Steps)
 col_card1, col_card2, col_card3 = st.columns(3)
 with col_card1:
     card1_html = (
         '<div class="feature-card card-anim-1">'
         '<div style="font-size: 1.15rem; font-weight:700; color:#4ade80; margin-bottom:4px;">1. Upload File(s)</div>'
-        '<div style="font-size:0.85rem; color:#94a3b8; line-height:1.4;">Drop photos or PDFs containing tabular registers.</div>'
+        '<div style="font-size:0.85rem; color:#94a3b8; line-height:1.4;">Drop photos or PDFs containing tabular registers below.</div>'
         '</div>'
     )
     st.markdown(card1_html, unsafe_allow_html=True)
@@ -292,8 +314,8 @@ with col_card2:
 with col_card3:
     card3_html = (
         '<div class="feature-card card-anim-3">'
-        '<div style="font-size: 1.15rem; font-weight:700; color:#a78bfa; margin-bottom:4px;">3. Download Excel</div>'
-        '<div style="font-size:0.85rem; color:#94a3b8; line-height:1.4;">Get a styled multi-sheet Excel file (.xlsx) ready for use.</div>'
+        '<div style="font-size: 1.15rem; font-weight:700; color:#a78bfa; margin-bottom:4px;">3. Edit & Download Excel</div>'
+        '<div style="font-size:0.85rem; color:#94a3b8; line-height:1.4;">Customize displayed tables and download the final styled .xlsx workbook.</div>'
         '</div>'
     )
     st.markdown(card3_html, unsafe_allow_html=True)
