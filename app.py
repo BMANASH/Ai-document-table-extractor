@@ -145,25 +145,21 @@ h1, h2, h3 {
     margin-bottom: 1rem;
 }
 
-.table-header-card {
-    background: rgba(17, 24, 39, 0.85);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 12px 12px 0 0;
-    padding: 1rem 1.25rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 1.5rem;
+/* Master Download Button Styling (Pure Excel Emerald Green) */
+.stDownloadButton > button {
+    background: linear-gradient(135deg, #107C41 0%, #15803d 100%) !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    font-size: 1.05rem !important;
+    border: none !important;
+    border-radius: 12px !important;
+    padding: 0.85rem 2rem !important;
+    box-shadow: 0 4px 25px rgba(16, 124, 65, 0.45) !important;
+    transition: all 0.25s ease-in-out !important;
 }
-
-.summary-container {
-    background: rgba(17, 24, 39, 0.75);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 14px;
-    padding: 1.5rem;
-    margin-top: 1rem;
-    margin-bottom: 1.5rem;
-    line-height: 1.6;
+.stDownloadButton > button:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 30px rgba(16, 124, 65, 0.75) !important;
 }
 
 .stButton > button[kind="primary"] {
@@ -251,7 +247,7 @@ with col_card3:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# Fast In-Memory Image Resizer (1600px optimal dimension for fast API transfer)
+# Fast In-Memory Image Resizer
 def prepare_image(raw_bytes):
     img = Image.open(io.BytesIO(raw_bytes))
     if img.mode != "RGB":
@@ -265,10 +261,9 @@ def prepare_image(raw_bytes):
     return Image.open(out)
 
 # Enterprise OpenPyXL Workbook Formatter
-def format_excel_workbook(writer, df_dict):
+def format_excel_workbook(writer):
     workbook = writer.book
     
-    # Styles
     header_font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
     header_fill = PatternFill(start_color="107C41", end_color="107C41", fill_type="solid")
     regular_font = Font(name="Calibri", size=10, color="1F2937")
@@ -279,7 +274,6 @@ def format_excel_workbook(writer, df_dict):
         top=Side(style='thin', color='E5E7EB'),
         bottom=Side(style='thin', color='E5E7EB')
     )
-    
     zebra_fill = PatternFill(start_color="F9FAFB", end_color="F9FAFB", fill_type="solid")
     
     for sheet_name in workbook.sheetnames:
@@ -287,6 +281,7 @@ def format_excel_workbook(writer, df_dict):
         ws.views.sheetView[0].showGridLines = True
         
         # Style Header Row
+        ws.row_dimensions[1].height = 26
         for col_num in range(1, ws.max_column + 1):
             cell = ws.cell(row=1, column=col_num)
             cell.font = header_font
@@ -294,18 +289,17 @@ def format_excel_workbook(writer, df_dict):
             cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
             cell.border = thin_border
         
-        ws.row_dimensions[1].height = 28
-        
         # Style Data Rows
         for row_num in range(2, ws.max_row + 1):
             is_even = (row_num % 2 == 0)
             ws.row_dimensions[row_num].height = 20
             for col_num in range(1, ws.max_column + 1):
                 cell = ws.cell(row=row_num, column=col_num)
+                if cell.value is None or str(cell.value).strip().lower() in ["none", "nan"]:
+                    cell.value = ""
                 cell.font = regular_font
                 cell.border = thin_border
                 
-                # Check for numerical alignment vs text
                 val_str = str(cell.value or "").strip()
                 if val_str.isdigit() and len(val_str) < 5:
                     cell.alignment = Alignment(horizontal="center", vertical="center")
@@ -323,9 +317,9 @@ def format_excel_workbook(writer, df_dict):
                 val = str(cell.value or "")
                 if len(val) > max_len:
                     max_len = len(val)
-            ws.column_dimensions[col_letter].width = max(max_len + 4, 12)
+            ws.column_dimensions[col_letter].width = max(max_len + 4, 14)
 
-# Multi-Model Resilient Cascade with Detailed Business Summary
+# Multi-Model Resilient Cascade
 def execute_extraction_cascade(files_data, key_str):
     genai.configure(api_key=key_str)
     
@@ -335,24 +329,24 @@ def execute_extraction_cascade(files_data, key_str):
     
     1. EXTRACT ALL DISTINCT TABLES:
        - Transcribe every row, column header, serial number, employee/contact name, reporting manager, phone number(s), state, and remarks.
-       - Clean values: If a cell is empty or has illegible noise, make it an empty string "". Do NOT write literal "None" or "NaN".
-       - Format phone numbers cleanly as readable strings (e.g. "9864954341" or "8794235049 / 8787565924").
-       - Separate distinct pages or distinct sheets into clearly titled tables (e.g. "Employee Register - Page 1", "Employee Register - Page 2").
+       - Clean values: If a cell is empty or has noise, make it an empty string "". Do NOT write literal "None" or "NaN".
+       - Standardize headers across pages (e.g. use "NO.", "EMPLOYEE NAME", "REPORTING MANAGER", "PHONE", "STATE", "REMARKS").
+       - Separate distinct pages or sheets into distinct tables with descriptive titles (e.g. "Employee Register - Page 1", "Employee Register - Page 2").
        
     2. COMPREHENSIVE EXECUTIVE BUSINESS SUMMARY:
-       - Write a clear, structured, and easy-to-read business breakdown in Markdown.
+       - Write a clear, structured executive summary in clean Markdown.
        - Include:
-         * 📌 **Document Scope**: What type of document this is (e.g., Regional Field Staff Directory, Attendance Register).
-         * 📊 **Operational Metrics**: Total records parsed, count of reporting managers, geographic regions covered.
-         * 🔍 **Key Observations & Action Items**: Notable remarks (e.g., unreachable numbers, switch off, pending confirmations).
+         * 📌 **Document Scope**: Brief explanation of what this data represents.
+         * 📊 **Operational Metrics**: Total records parsed, managers count, geographic regions covered.
+         * 🔍 **Key Observations & Action Items**: Connectivity issues, remarks summary (e.g., unreachable numbers, switch-offs).
 
     Return output strictly as valid JSON matching this schema:
     {
-      "analysis": "Structured Markdown executive summary with bullet points and bold section titles.",
+      "analysis": "Structured summary text.",
       "tables": [
         {
           "table_name": "Employee Register - Page 1",
-          "headers": ["SR. NO.", "EMPLOYEE NAME", "REPORTING MANAGER", "PHONE", "STATE", "REMARKS"],
+          "headers": ["NO.", "EMPLOYEE NAME", "REPORTING MANAGER", "PHONE", "STATE", "REMARKS"],
           "rows": [
             ["1", "John Doe", "Jane Smith", "9876543210", "ASSAM", "Active"]
           ]
@@ -400,7 +394,7 @@ def create_unique_sheet_name(raw_name, index, seen_set):
     clean = "".join(c for c in raw_name if c.isalnum() or c in (' ', '_', '-')).strip()
     clean = clean.replace('_', ' ')
     if not clean:
-        clean = f"Table {index+1}"
+        clean = f"Page {index+1}"
     base_name = f"Sheet {index+1} - {clean[:16]}".strip()
     candidate = base_name[:31]
     count = 1
@@ -410,16 +404,6 @@ def create_unique_sheet_name(raw_name, index, seen_set):
         count += 1
     seen_set.add(candidate)
     return candidate
-
-# Generate Single-Sheet Styled Excel Buffer
-def create_single_styled_excel(df, sheet_title="Extracted Table"):
-    buf = io.BytesIO()
-    seen = set()
-    safe_title = create_unique_sheet_name(sheet_title, 0, seen)
-    with pd.ExcelWriter(buf, engine='openpyxl') as writer:
-        df.to_excel(writer, sheet_name=safe_title, index=False)
-        format_excel_workbook(writer, {safe_title: df})
-    return buf.getvalue()
 
 # Document Upload Section with Multiple File Support
 uploaded_files = st.file_uploader(
@@ -451,7 +435,7 @@ if uploaded_files:
             st.subheader("⚡ Convert to Excel")
             st.caption(f"Extract and compile all {len(uploaded_files)} file(s) into a unified multi-sheet Excel spreadsheet.")
             if st.button("🚀 Extract Tables & Convert to Excel", type="primary", use_container_width=True):
-                with st.spinner("Extracting tabular data and applying Excel formatting..."):
+                with st.spinner("Extracting tabular data and formatting Excel sheets..."):
                     try:
                         raw_json_str, used_model = execute_extraction_cascade(files_data, api_key)
                         data = json.loads(raw_json_str)
@@ -466,17 +450,19 @@ if "extracted_data" in st.session_state:
     data = st.session_state["extracted_data"]
     
     st.markdown("---")
-    st.markdown("### 💡 Executive Summary & Business Insights")
+    st.subheader("💡 Executive Summary & Business Insights")
     
-    summary_text = data.get("analysis", "No detailed analysis generated.")
-    st.markdown(f'<div class="summary-container">{summary_text}</div>', unsafe_allow_html=True)
+    summary_text = data.get("analysis", "No summary provided.")
+    with st.container():
+        st.markdown(summary_text)
     
     tables = data.get("tables", [])
     if not tables:
         st.warning("No tables found in the uploaded file(s).")
     else:
-        st.markdown("### ✏️ Review, Edit & Export Tables")
-        st.caption("Double-click any cell below to modify names, phone numbers, or remarks. Your edits will be included in the downloaded Excel files.")
+        st.markdown("---")
+        st.subheader("✏️ Review & Edit Tables")
+        st.caption("Double-click any cell below to modify names, phone numbers, or remarks before downloading.")
         
         edited_dfs = {}
         for idx, tbl in enumerate(tables):
@@ -484,20 +470,23 @@ if "extracted_data" in st.session_state:
             headers = tbl.get("headers", [])
             rows = tbl.get("rows", [])
             
-            # Clean empty or None values
             cleaned_rows = []
             for r in rows:
-                cleaned_rows.append([("" if val is None or str(val).strip() == "None" else str(val).strip()) for val in r])
+                cleaned_rows.append([("" if val is None or str(val).strip() in ["None", "NaN", "nan"] else str(val).strip()) for val in r])
                 
             df = pd.DataFrame(cleaned_rows, columns=headers if headers else None)
             df.fillna("", inplace=True)
             
-            # Per-Table Action Header Bar
-            col_t_title, col_t_excel, col_t_csv = st.columns([3, 1.2, 0.8])
-            with col_t_title:
-                st.markdown(f"#### 📊 {table_name} &nbsp; `<span style='font-size:0.8rem; background:rgba(34,197,94,0.15); color:#4ade80; padding:2px 8px; border-radius:6px;'>{len(df)} Records</span>`", unsafe_allow_html=True)
+            # Clean Table Title with HTML badge (No backtick artifacts)
+            badge_html = f'''
+            <div style="display:flex; align-items:center; gap:12px; margin-top:1.5rem; margin-bottom:0.6rem;">
+                <span style="font-size:1.2rem; font-weight:700; color:#ffffff;">📊 {table_name}</span>
+                <span style="font-size:0.75rem; font-weight:600; background:rgba(34,197,94,0.15); color:#4ade80; border:1px solid rgba(34,197,94,0.3); padding:3px 10px; border-radius:9999px;">{len(df)} Records</span>
+            </div>
+            '''
+            st.markdown(badge_html, unsafe_allow_html=True)
             
-            # Interactive In-Browser Editable Grid
+            # Interactive Data Editor
             edited_df = st.data_editor(
                 df, 
                 key=f"editor_{idx}", 
@@ -506,41 +495,18 @@ if "extracted_data" in st.session_state:
                 height=min(400, 45 + len(df) * 35)
             )
             edited_dfs[table_name] = edited_df
-            
-            # Per-Table Direct Export Buttons
-            with col_t_excel:
-                single_excel_bytes = create_single_styled_excel(edited_df, table_name)
-                st.download_button(
-                    label=f"📥 Download Sheet (.xlsx)",
-                    data=single_excel_bytes,
-                    file_name=f"{table_name.lower().replace(' ', '_')}.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    key=f"dl_single_xlsx_{idx}",
-                    use_container_width=True
-                )
-            with col_t_csv:
-                single_csv_bytes = edited_df.to_csv(index=False).encode('utf-8')
-                st.download_button(
-                    label=f"📄 CSV",
-                    data=single_csv_bytes,
-                    file_name=f"{table_name.lower().replace(' ', '_')}.csv",
-                    mime="text/csv",
-                    key=f"dl_single_csv_{idx}",
-                    use_container_width=True
-                )
-            
-            st.markdown("<br>", unsafe_allow_html=True)
 
-        # Multi-Tab Styled Excel Workbook Generator
+        # Multi-Tab Styled Excel Workbook Generator (Single Master Output)
         excel_buffer = io.BytesIO()
         seen_sheets = set()
         with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
+            # If multiple pages exist, create a Master Consolidated Tab
             if len(edited_dfs) > 1:
                 try:
                     combined_df = pd.concat(list(edited_dfs.values()), ignore_index=True)
                     combined_df.fillna("", inplace=True)
-                    combined_df.to_excel(writer, sheet_name="All Combined Records", index=False)
-                    seen_sheets.add("All Combined Records")
+                    combined_df.to_excel(writer, sheet_name="Master Combined Records", index=False)
+                    seen_sheets.add("Master Combined Records")
                 except Exception:
                     pass
             
@@ -548,29 +514,21 @@ if "extracted_data" in st.session_state:
                 sheet_title = create_unique_sheet_name(name, idx, seen_sheets)
                 df.to_excel(writer, sheet_name=sheet_title, index=False)
                 
-            format_excel_workbook(writer, edited_dfs)
+            format_excel_workbook(writer)
                 
         excel_data = excel_buffer.getvalue()
 
-        # Master Global Download Bar
+        # Single Master Download Action Bar
         st.markdown("---")
-        st.markdown("#### 📦 Master Export (All Pages & Consolidated Data)")
-        c1, c2 = st.columns(2)
-        with c1:
-            st.download_button(
-                label=f"📥 Download Unified Styled Excel Workbook ({len(edited_dfs)} Sheets + Master Tab)",
-                data=excel_data,
-                file_name="sheetgen_master_workbook.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                type="primary",
-                use_container_width=True
-            )
-        with c2:
-            combined_csv = pd.concat(list(edited_dfs.values()), ignore_index=True).fillna("").to_csv(index=False).encode('utf-8')
-            st.download_button(
-                label="📥 Download All Combined Records (.csv)",
-                data=combined_csv,
-                file_name="sheetgen_master_all_records.csv",
-                mime="text/csv",
-                use_container_width=True
-            )
+        st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+        
+        button_label = "📥 Download Excel Workbook (.xlsx)" if len(edited_dfs) == 1 else f"📥 Download Complete Multi-Sheet Excel Workbook ({len(edited_dfs)} Sheets + Master Tab)"
+        
+        st.download_button(
+            label=button_label,
+            data=excel_data,
+            file_name="sheetgen_extracted_workbook.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            type="primary",
+            use_container_width=True
+        )
