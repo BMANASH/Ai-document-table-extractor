@@ -1,5 +1,11 @@
 # 📊 SheetGen AI — Universal Document to Excel & AI Dashboard Suite
 
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://ai-document-table-extractor-firsqqyaaddkqsriuz9nsj.streamlit.app/)
+
+🔗 **Live Web Application**: [https://ai-document-table-extractor-firsqqyaaddkqsriuz9nsj.streamlit.app/](https://ai-document-table-extractor-firsqqyaaddkqsriuz9nsj.streamlit.app/)
+
+---
+
 SheetGen AI is an intelligent data extraction and Business Intelligence (BI) tool that instantly transforms single or multi-page documents (Images & PDFs) into structured, editable Excel spreadsheets (`.xlsx`) and interactive visual dashboards.
 
 Powered by multimodal vision AI, SheetGen AI handles printed, digital, and handwritten tabular documents—such as invoices, ledgers, rosters, attendance sheets, and receipts—with high accuracy.
@@ -34,9 +40,9 @@ Powered by multimodal vision AI, SheetGen AI handles printed, digital, and handw
 
 ---
 
-## 📌 Recommended Batch & File Limits
+## 📌 Supported Batch Upload Formats & Limits
 
-To ensure optimal extraction accuracy and avoid processing timeouts:
+To ensure optimal extraction accuracy and processing speed:
 
 | Document Type | Recommended Batch Limit | File Size Constraint |
 | :--- | :--- | :--- |
@@ -61,5 +67,5 @@ To ensure optimal extraction accuracy and avoid processing timeouts:
 
 ### 1. Clone the Repository
 ```bash
-git clone [https://github.com/your-username/Ai-document-table-extractor.git](https://github.com/your-username/Ai-document-table-extractor.git)
-cd Ai-document-table-extractor
+git clone https://github.com/BMANASH/SheetGen-Analytics-Suite.git
+cd SheetGen-Analytics-Suite
