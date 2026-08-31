@@ -440,7 +440,7 @@ with st.sidebar:
     st.markdown("<div style='font-size:0.8rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:#94a3b8; margin-bottom:10px;'>Core Capabilities</div>", unsafe_allow_html=True)
     
     sidebar_items_html = (
-        '<div class="sidebar-item"><div class="sidebar-title">⚡ Universal OCR Vision</div>'
+        '<div class="sidebar-item"><div class="sidebar-title">⚡ AI Table Extraction</div>'
         '<div class="sidebar-desc">Extracts tables from invoices, registers, ledgers, and receipts.</div></div>'
         '<div class="sidebar-item"><div class="sidebar-title">📊 Executive Dashboard Engine</div>'
         '<div class="sidebar-desc">Instant KPI metrics and interactive dark-glass visual charts.</div></div>'
