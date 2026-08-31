@@ -40,22 +40,26 @@ html, body, [data-testid="stAppViewContainer"], .stApp {
 }
 
 /* Force Streamlit app view and block containers to expand to 100% full width */
-[data-testid="stAppViewContainer"] > .main,
-[data-testid="stMainBlockContainer"],
-[data-testid="stAppViewBlockContainer"],
+section.main,
 .main,
 .stMain,
+[data-testid="stMain"],
+[data-testid="stAppViewContainer"] > .main,
+[data-testid="stAppViewBlockContainer"],
 .block-container,
-div[data-testid="stAppViewBlockContainer"] {
-    max-width: 100vw !important;
+[data-testid="stMainBlockContainer"],
+div[data-testid="stMainBlockContainer"],
+div[data-testid="stAppViewBlockContainer"],
+div[data-testid="stVerticalBlock"] > div {
+    max-width: 100% !important;
     width: 100% !important;
     margin-left: 0 !important;
     margin-right: 0 !important;
-    padding-left: 2.5rem !important;
-    padding-right: 2.5rem !important;
+    padding-left: 2rem !important;
+    padding-right: 2rem !important;
     padding-top: 1.2rem !important;
     padding-bottom: 3.5rem !important;
-    transition: padding 0.25s ease-in-out, width 0.25s ease-in-out !important;
+    transition: all 0.25s ease-in-out !important;
 }
 
 header[data-testid="stHeader"], [data-testid="stHeader"] {
