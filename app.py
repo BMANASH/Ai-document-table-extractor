@@ -27,7 +27,7 @@ st.set_page_config(
 # Fetch API Key silently from Streamlit Secrets or Environment
 api_key = st.secrets.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY", "")
 
-# Modern Dark Theme, Universal Dark Mode Lock & Smooth Full-Width Responsive CSS
+# Modern Dark Theme, Universal Dark Mode Lock & True Full-Width Expanding CSS
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap');
@@ -39,15 +39,24 @@ html, body, [data-testid="stAppViewContainer"], .stApp {
     font-family: 'Plus Jakarta Sans', sans-serif !important;
 }
 
-/* Fluid Full-Width Container Expanding When Sidebar Toggles */
-.block-container, [data-testid="stMainBlockContainer"], [data-testid="stAppViewBlockContainer"] {
+/* Force Streamlit main view to fit full screen width when sidebar is collapsed */
+.stApp [data-testid="stAppViewContainer"] > .main {
     max-width: 100% !important;
     width: 100% !important;
-    padding-left: 2rem !important;
-    padding-right: 2rem !important;
+}
+
+.block-container,
+[data-testid="stMainBlockContainer"],
+[data-testid="stAppViewBlockContainer"],
+section.main > div:has(~ footer),
+section.main .block-container {
+    max-width: 100% !important;
+    width: 100% !important;
+    padding-left: 2.5rem !important;
+    padding-right: 2.5rem !important;
     padding-top: 1.5rem !important;
     padding-bottom: 3rem !important;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    transition: all 0.25s ease-in-out !important;
 }
 
 header[data-testid="stHeader"], [data-testid="stHeader"] {
@@ -62,7 +71,7 @@ section[data-testid="stSidebar"] {
     width: 300px !important;
     background-color: #0b0f19 !important;
     border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
-    transition: transform 0.3s ease-in-out !important;
+    transition: transform 0.25s ease-in-out !important;
 }
 
 [data-testid="stSidebarResizer"] {
