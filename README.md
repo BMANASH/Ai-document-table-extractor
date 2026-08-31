@@ -1,8 +1,8 @@
 # SheetGen AI — Universal Document to Excel & AI Dashboard Suite
 
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://ai-document-table-extractor-firsqqyaaddkqsriuz9nsj.streamlit.app/)
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://sheetgen-analytics-suite.streamlit.app/)
 
-🔗 **Live Web Application**: [https://ai-document-table-extractor-firsqqyaaddkqsriuz9nsj.streamlit.app/](https://ai-document-table-extractor-firsqqyaaddkqsriuz9nsj.streamlit.app/)
+🔗 **Live Web Application**: [https://sheetgen-analytics-suite.streamlit.app/](https://sheetgen-analytics-suite.streamlit.app/)
 
 ---
 
