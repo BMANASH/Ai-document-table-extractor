@@ -6,7 +6,7 @@
 
 ---
 
-SheetGen AI is an intelligent data extraction and Business Intelligence (BI) tool that instantly transforms single or multi-page documents (Images & PDFs) into structured, editable Excel spreadsheets (`.xlsx`) and interactive visual dashboards.
+SheetGen AI is a Simple intelligent data extraction and Business Intelligence (BI) tool that instantly transforms single or multi-page documents (Images & PDFs) into structured, editable Excel spreadsheets (`.xlsx`) and interactive visual dashboards.
 
 Powered by multimodal vision AI, SheetGen AI handles printed, digital, and handwritten tabular documents—such as invoices, ledgers, rosters, attendance sheets, and receipts—with high accuracy.
 
