@@ -16,7 +16,7 @@ from openpyxl.chart.label import DataLabelList
 import plotly.express as px
 import plotly.graph_objects as go
 
-# Page Configuration
+# Page Configuration - Wide Layout Active
 st.set_page_config(
     page_title="SheetGen AI | Universal Document to Excel & Dashboard",
     page_icon="📊",
@@ -27,7 +27,7 @@ st.set_page_config(
 # Fetch API Key silently from Streamlit Secrets or Environment
 api_key = st.secrets.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY", "")
 
-# Modern Dark Theme & Complete Edge-to-Edge Responsive CSS
+# Modern Dark Theme & Complete Edge-to-Edge Fluid Full-Width CSS
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap');
@@ -39,27 +39,29 @@ html, body, [data-testid="stAppViewContainer"], .stApp {
     font-family: 'Plus Jakarta Sans', sans-serif !important;
 }
 
-/* Force Streamlit app view and block containers to expand to 100% full width */
-section.main,
+/* =========================================================================
+   TRUE FULL-WIDTH EXPANSION FIX (Edge-to-Edge when sidebar closes)
+   ========================================================================= */
+.stApp [data-testid="stAppViewContainer"] {
+    width: 100% !important;
+    max-width: 100vw !important;
+}
+
+.stApp [data-testid="stAppViewContainer"] > .main,
 .main,
 .stMain,
 [data-testid="stMain"],
-[data-testid="stAppViewContainer"] > .main,
 [data-testid="stAppViewBlockContainer"],
 .block-container,
 [data-testid="stMainBlockContainer"],
-div[data-testid="stMainBlockContainer"],
-div[data-testid="stAppViewBlockContainer"],
-div[data-testid="stVerticalBlock"] > div {
+section.main > div {
     max-width: 100% !important;
     width: 100% !important;
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-    padding-left: 2rem !important;
-    padding-right: 2rem !important;
+    padding-left: 2.5rem !important;
+    padding-right: 2.5rem !important;
     padding-top: 1.2rem !important;
-    padding-bottom: 3.5rem !important;
-    transition: all 0.25s ease-in-out !important;
+    padding-bottom: 3rem !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 header[data-testid="stHeader"], [data-testid="stHeader"] {
@@ -74,6 +76,7 @@ section[data-testid="stSidebar"] {
     width: 300px !important;
     background-color: #0b0f19 !important;
     border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+    transition: transform 0.3s ease-in-out !important;
 }
 
 [data-testid="stSidebarResizer"] {
@@ -148,6 +151,7 @@ h1, h2, h3, h4 {
     backdrop-filter: blur(12px);
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
     transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    height: 100%;
 }
 
 .card-anim-1 { animation: floatCard1 5.5s ease-in-out infinite; }
@@ -1151,7 +1155,6 @@ def execute_extraction_cascade(files_data, key_str):
             
     contents.append(prompt)
 
-    # Active Vision Model Hierarchy
     models_to_try = ["gemini-3.5-flash", "gemini-3.6-flash", "gemini-2.5-flash"]
     last_err = None
     start_t = time.time()
@@ -1349,7 +1352,6 @@ uploaded_files = st.file_uploader(
 )
 
 if uploaded_files:
-    # Validate Upload Batch Constraints
     img_files = [f for f in uploaded_files if "image" in f.type]
     pdf_files = [f for f in uploaded_files if "pdf" in f.type]
     
@@ -1359,7 +1361,6 @@ if uploaded_files:
     total_img_mb = sum(len(f.getvalue()) for f in img_files) / (1024 * 1024)
     total_pdf_mb = sum(len(f.getvalue()) for f in pdf_files) / (1024 * 1024)
 
-    # Validate Mixed Format Uploads
     if img_count > 0 and pdf_count > 0:
         st.warning("⚠️ **Format Notice:** Please upload either Images or PDFs in a single batch, not both mixed together.")
     elif img_count > 6:
