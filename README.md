@@ -21,7 +21,7 @@ Powered by multimodal vision AI, SheetGen AI handles printed, digital, and handw
 
 ### 2. Mode 1: In-Browser Data Grid & Editor
 * **Interactive Editing**: Double-click any table cell directly in the browser to modify or correct values.
-* **Toolbar Controls**: Search within records (`🔍`), hide/view specific columns (`👁️`), and dynamically add new rows (`+`).
+* **Toolbar Controls**: Search within records , hide/view specific columns , and dynamically add new rows (`+`).
 * **Clean Base Export**: Download the cleaned, formatted data as a standalone multi-sheet `.xlsx` file.
 
 ### 3. Mode 2: Executive Dashboard Engine (Live Formulas)
