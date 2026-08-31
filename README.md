@@ -14,7 +14,7 @@ Powered by multimodal vision AI, SheetGen AI handles printed, digital, and handw
 
 ## Core Features
 
-### 1. Universal OCR Vision Extraction
+### 1.  AI Table Extraction
 * **Multi-Format Ingestion**: Supports PNG, JPG, JPEG, and PDF documents.
 * **Handwriting & Scan Recognition**: Accurately isolates tabular rows, sanitizes noisy text, and detects authentic column headers.
 * **Domain Agnostic**: Works seamlessly across receipts, payroll sheets, inventory registers, and financial invoices.
