@@ -39,21 +39,23 @@ html, body, [data-testid="stAppViewContainer"], .stApp {
     font-family: 'Plus Jakarta Sans', sans-serif !important;
 }
 
-/* Force full width stretch across all viewports when sidebar closes */
-.main, 
-.stMain,
-[data-testid="stMain"],
+/* Force Streamlit app view and block containers to expand to 100% full width */
 [data-testid="stAppViewContainer"] > .main,
+[data-testid="stMainBlockContainer"],
 [data-testid="stAppViewBlockContainer"],
+.main,
+.stMain,
 .block-container,
-[data-testid="stMainBlockContainer"] {
-    max-width: 100% !important;
+div[data-testid="stAppViewBlockContainer"] {
+    max-width: 100vw !important;
     width: 100% !important;
-    padding-left: 2rem !important;
-    padding-right: 2rem !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: 2.5rem !important;
+    padding-right: 2.5rem !important;
     padding-top: 1.2rem !important;
-    padding-bottom: 3rem !important;
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    padding-bottom: 3.5rem !important;
+    transition: padding 0.25s ease-in-out, width 0.25s ease-in-out !important;
 }
 
 header[data-testid="stHeader"], [data-testid="stHeader"] {
